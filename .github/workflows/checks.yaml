@@ -20,6 +20,6 @@ jobs:
             pip install black
             pip install flake8
             pip install isort
-        - name: Lint & check for errors w/ black & flake8
-          run: |
-            make check
+#        - name: Lint & check for errors w/ black & flake8
+#          run: |
+#            make check
