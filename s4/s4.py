@@ -11,7 +11,7 @@
 # <img src="images/hero.png" width="100%"/>
 
 
-# *Blog Post and [Library](https://github.com/srush/annotated-s4/) by [Sasha Rush](http://rush-nlp.com/) and [Sidd Karamcheti](https://www.siddkaramcheti.com/)*, v3
+# *[Sasha Rush](http://rush-nlp.com/) and [Sidd Karamcheti](https://www.siddkaramcheti.com/) 의 블로그와 [라이브러리](https://github.com/srush/annotated-s4/) by *, v3
 
 #
 # The [Structured State Space for Sequence
