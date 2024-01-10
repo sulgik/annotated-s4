@@ -23,20 +23,17 @@
 
 # <img src="images/table.png" width="100%"/>
 
-# The paper is also a refreshing departure from Transformers, taking a
-# very different approach to an important problem-space.  However,
-# several of our colleagues have also noted privately the difficulty
-# of gaining intuition for the model.  This blog post is a first step
-# towards this goal of gaining intuition, linking concrete code
-# implementations with explanations from the S4 paper – very much in
-# the style of [the annotated
-# Transformer](https://nlp.seas.harvard.edu/2018/04/03/attention.html).
-# Hopefully this combination of code and literate explanations helps
-# you follow the details of the model. By the end of the blog you will
-# have an efficient working version of S4 that can operate as a CNN
-# for training, but then convert to an efficient RNN at test time.  To
-# preview the results, you will be able to generate images from pixels
-# and sounds directly from audio waves on a standard GPU.
+# 이 논문은 트랜스포머(Transformer)에서 벗어나 중요한 문제 영역에 대해
+# 매우 다른 접근 방식을 취하고 있어 상쾌합니다. 그러나,
+# 여러 동료들이 모델에 대한 직관을 얻기 어렵다고 사적으로 지적한 바 있습니다.
+# 이 블로그 게시물은 직관을 얻기 위한 첫 단계로, 구체적인 코드
+# 구현과 S4 논문의 설명을 연결합니다 - [주석이 달린
+# 트랜스포머](https://nlp.seas.harvard.edu/2018/04/03/attention.html)의 스타일로 매우 유사합니다.
+# 이렇게 코드와 문해력 있는 설명의 조합이
+# 모델의 세부 사항을 따라가는 데 도움이 되기를 바랍니다. 이 블로그를 다 읽으면
+# 효율적인 작동 버전의 S4를 갖게 될 것이며, 이는 훈련 시 CNN으로 작동할 수 있고,
+# 테스트 시에는 효율적인 RNN으로 전환할 수 있습니다. 결과를 미리 보면,
+# 표준 GPU 에서 픽셀로부터 이미지를 생성하고 오디오 파형으로부터 직접 소리를 생성할 수 있습니다.
 #
 # <center> <img src="images/im0.4.png" width="70%">
 # <img src='images/speech25.0.png' width='80%'>
@@ -56,8 +53,8 @@
 #     - [Tangent: A Mechanics Example]
 #     - [Training SSMs: The Convolutional Representation]
 #     - [An SSM Neural Network.]
-# * [Part 1b: Addressing Long-Range Dependencies with HiPPO]
-# * [Part 2: Implementing S4] (Advanced)
+# * [Part 1b: HiPPO 로 긴범위 의존성 해결하기]
+# * [Part 2: S4 구현] (Advanced)
 #     - [Step 1. SSM Generating Functions]
 #     - [Step 2: Diagonal Case]
 #     - [Step 3: Diagonal Plus Low-Rank]
@@ -75,17 +72,16 @@
 
 # <nav id="TOC">
 
-# Note that this project uses [JAX](https://github.com/google/jax/)
-# with the [Flax](https://github.com/google/flax) NN library.  While
-# we personally mainly use Torch, the functional nature of JAX is a good
-# fit for some of the complexities of S4. We make heavy use of
+# 이 프로젝트는 [JAX](https://github.com/google/jax/)를 사용하며
+# [Flax](https://github.com/google/flax) NN 라이브러리와 함께합니다. 우리는 개인적으로 주로 Torch를 사용하지만,
+# JAX 의 함수적 특성은 S4 의 복잡성에 잘 맞습니다. 우리는
 # [vmap](https://jax.readthedocs.io/en/latest/jax.html#jax.vmap),
 # [scan](https://jax.readthedocs.io/en/latest/_autosummary/jax.lax.scan.html),
-# their [NN
-# cousins](https://flax.readthedocs.io/en/latest/flax.linen.html#module-flax.linen.transforms),
-# and most importantly
+# 그리고 그들의 [NN
+# 친척들](https://flax.readthedocs.io/en/latest/flax.linen.html#module-flax.linen.transforms),
+# 그리고 가장 중요하게는
 # [jax.jit](https://jax.readthedocs.io/en/latest/notebooks/thinking_in_jax.html#jit-mechanics-tracing-and-static-variables)
-# to compile fast and efficient S4 layers.
+# 을 사용하여 빠르고 효율적인 S4 레이어를 컴파일합니다.
 
 from functools import partial
 import jax
@@ -105,14 +101,14 @@ if __name__ == "__main__":
 # ## Part 1: State Space Models
 
 # 시작해봅시다! 우리의 목표는 긴 시퀀스를 효율적으로 모델링하는 것입니다. 
-# 이를 위해, 우리는 state space model 을 기반으로 하는 새로운 신경망 레이어를 구축할 것입니다. 
-# 이 섹션의 끝까지 이 레이어를 사용하여 모델을 구축하고 실행할 수 있게 될 것입니다. 하지만, 기술적인 배경 지식이 필요합니다. 논문의 배경을 통해 함께 알아가 봅시다.
+# 이를 위해, 우리는 state space model 을 기반으로 하는 신경망 레이어를 구축할 것입니다. 
+# 이 섹션에서는 이 레이어를 사용하여 모델을 구축하고 실행할 수 있게 될 것입니다. 하지만, 기술적인 배경 지식이 필요합니다. 논문의 background 를 통해 함께 알아가 봅시다.
 
 
 # > [state space model](https://en.wikipedia.org/wiki/State-space_representation) 은
 # > 이 간단한 방정식으로 정의됩니다.
-# > 이는 1차원 입력 신호 $u(t)$를 $N$차원 잠재 상태 $x(t)$로 매핑한 후,
-# > 1차원 출력 신호 $y(t)$로 투영합니다.
+# > 이는 1차원 입력 신호 $u(t)$ 를 $N$ 차원 잠재 상태 $x(t)$ 로 매핑한 후,
+# > 1차원 출력 신호 $y(t)$ 로 투영합니다.
 # $$
 #   \begin{aligned}
 #     x'(t) &= \boldsymbol{A}x(t) + \boldsymbol{B}u(t) \\
@@ -120,13 +116,12 @@ if __name__ == "__main__":
 #   \end{aligned}
 # $$
 # > 우리의 목표는
-# > SSM을 심층
-# > 시퀀스 모델에서 블랙박스 표현으로 단순하게 사용하는 것이며, 
-# > 여기서 $\boldsymbol{A}, \boldsymbol{B}, \boldsymbol{C}, \boldsymbol{D}$는
-# > 경사 하강법으로 학습된 매개변수입니다. 나머지에 대해서는
-# > 설명을 위해 매개변수 $\boldsymbol{D}$를 생략하겠습니다(또는 동등하게,
-# > $\boldsymbol{D} = 0$라고 가정합니다. 왜냐하면 항 $\boldsymbol{D}u$는
-# > 스킵 연결로 볼 수 있고 계산하기 쉽기 때문입니다).
+# > SSM 을 심층 시퀀스 모델에서 블랙박스 표현으로 단순하게 사용하는 것이며, 
+# > 여기서 $\boldsymbol{A}, \boldsymbol{B}, \boldsymbol{C}, \boldsymbol{D}$ 는
+# > 경사하강법으로 학습된 매개변수입니다. 나머지에 대해서는
+# > 설명을 위해 매개변수 $\boldsymbol{D}$ 를 생략하겠습니다 (또는 동등하게,
+# > $\boldsymbol{D} = 0$ 으로 가정합니다. 왜냐하면 항 $\boldsymbol{D}u$ 는
+# > 스킵 커넥션으로 볼 수 있고 계산하기 쉽기 때문입니다).
 # >
 # > SSM은 입력 $u(t)$를 상태 표현 벡터 $x(t)$와 출력 $y(t)$로 매핑합니다.
 # > 간단히 하기 위해, 입력과 출력을 일차원으로 가정하고, 상태 표현은
@@ -146,16 +141,15 @@ def random_SSM(rng, N):
 
 # ### Discrete-time SSM: The Recurrent Representation
 #
-# > 이산 입력 시퀀스 $(u_0, u_1, \dots )$에 적용되기 위해서
-# > 연속 함수 $u(t)$ 대신에, SSM은
-# > 입력의 해상도를 나타내는 **스텝 크기** $\Delta$에 의해
-# > 이산화되어야 합니다. 개념적으로, 입력 $u_k$는
-# > 내재적인 연속 신호 $u(t)$를 샘플링하는 것으로 볼 수 있으며,
-# > 여기서 $u_k = u(k \Delta)$ 입니다.
+# > 이산 입력 시퀀스 $(u_0, u_1, \dots )$ 에 적용하기 위해서
+# > 연속함수 $u(t)$ 대신,
+# > 입력의 해상도를 나타내는 **스텝 크기** $\Delta$ 를 이용하여
+# > SSM 을 이산화해야 합니다. 개념적으로, 입력 $u_k$ ($= u(k \Delta)$) 는
+# > 내재적인 연속신호 $u(t)$ 를 샘플링하는 것으로 볼 수 있다.
 # >
-# > 연속 시간 SSM을 이산화하기 위해, 우리는
-# > [이중 선형 방법](https://en.wikipedia.org/wiki/Bilinear_transform)을 사용합니다. 이 방법은
-# > 상태 행렬 $\boldsymbol{A}$를 근사치 $\boldsymbol{\overline{A}}$로 변환합니다. 이산 SSM은:
+# > continuous-time SSM 을 이산화하기 위해, 우리는
+# > [bilinear method](https://en.wikipedia.org/wiki/Bilinear_transform) 를 사용합니다. 이 방법은
+# > 상태 행렬 $\boldsymbol{A}$를 근사 $\boldsymbol{\overline{A}}$로 변환합니다. 이산 SSM은:
 # $$
 # \begin{aligned}
 #   \boldsymbol{\overline{A}} &= (\boldsymbol{I} - \Delta/2 \cdot \boldsymbol{A})^{-1}(\boldsymbol{I} + \Delta/2 \cdot \boldsymbol{A}) \\
@@ -202,8 +196,6 @@ def scan_SSM(Ab, Bb, Cb, u, x0):
 # 모든 것을 종합하여, 우리는 SSM을
 # 먼저 이산화한 다음, 단계별로 반복함으로써 실행할 수 있습니다,
 
-
-
 def run_SSM(A, B, C, u):
     L = u.shape[0]
     N = A.shape[0]
@@ -215,7 +207,7 @@ def run_SSM(A, B, C, u):
 
 # ### Tangent: A Mechanics Example
 
-#  SSM 구현을 더 직관적으로 이해하기 위해, 머신러닝에서 잠깐 물러서서, [역학분야에서의 고전적인 예제](https://en.wikipedia.org/wiki/State-space_representation#Moving_object_example)를 살펴봅니다.
+# SSM 구현을 더 직관적으로 이해하기 위해, 머신러닝에서 잠깐 물러서서, [역학분야에서의 고전적인 예제](https://en.wikipedia.org/wiki/State-space_representation#Moving_object_example)를 살펴봅니다.
  
 # 이 예제에서는 한 덩어리가 벽으로부터 전방위치 $y(t)$ 에 스프링으로 연결되어 있습니다.
 # 시간이 지나면서 이 덩어리는 다양한 힘 $u(t)$ 를 받습니다. 이 시스템의 매개변수는 질량 ($m$), 스프링 상수 ($k$), 마찰상수 ($b$) 로 구성되어 있습니다. 
