@@ -358,9 +358,9 @@ def K_conv(Ab, Bb, Cb, L):
 # now we just keep it around as a placeholder.
 
 
-# 이 필터를 적용한 결과는 표준디렉트컨볼류션을 사용하거나, [Fast Fourier Transform (FFT)](https://en.wikipedia.org/wiki/Convolution_theorem) 을 사용한 컨볼류션 정리를 사용하여 계산할 수 있습니다.
-# 이산 컨볼루션 정리는 두 시퀀스의 원형 컨볼루션을 효율적으로 계산할 수 있게 해주며, 입력 시퀀스의 FFT를 먼저 곱한 다음 역 FFT 를 적용하여 컨볼류션의 출력을 계산합니다. 
-# 우리 사례와 같은 비원형 컨볼류션에 이 정리를 활용하기 위해서는, 입력시퀀스를 0으로 패딩한 다음 출력 시퀀스의 패딩을 제거해야 합니다. 
+# 이 필터를 적용한 결과는 표준디렉트컨볼루션을 사용하거나, [Fast Fourier Transform (FFT)](https://en.wikipedia.org/wiki/Convolution_theorem) 을 사용한 컨볼루션 정리를 사용하여 계산할 수 있습니다.
+# 이산 컨볼루션 정리는 두 시퀀스의 원형 컨볼루션을 효율적으로 계산할 수 있게 해주며, 입력 시퀀스의 FFT를 먼저 곱한 다음 역 FFT 를 적용하여 컨볼루션의 출력을 계산합니다. 
+# 우리 사례와 같은 비원형 컨볼루션에 이 정리를 활용하기 위해서는, 입력시퀀스를 0으로 패딩한 다음 출력 시퀀스의 패딩을 제거해야 합니다. 
 # 길이가 길어질수록 이 FFT 방법은 직접컨볼루션보다 더 효율적입니다.
 
 def causal_convolution(u, K, nofft=False):
