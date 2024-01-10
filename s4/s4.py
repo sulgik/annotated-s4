@@ -14,13 +14,12 @@
 # *[Sasha Rush](http://rush-nlp.com/) 와 [Sidd Karamcheti](https://www.siddkaramcheti.com/) 의 블로그와 [라이브러리](https://github.com/srush/annotated-s4/) by *, v3
 
 #
-# The [Structured State Space for Sequence
-# Modeling](https://arxiv.org/abs/2111.00396) (S4) architecture is a new approach to very
-# long-range sequence modeling tasks for vision,
-# language, and audio, showing a capacity to capture dependencies over tens
-# of thousands of steps. Especially impressive are the model's results on the challenging
-# [Long Range Arena](https://github.com/google-research/long-range-arena) benchmark, showing an ability
-# to reason over sequences of up to **16,000+** elements with high accuracy.
+# [Structured State Space for Sequence
+# Modeling](https://arxiv.org/abs/2111.00396) (S4) 아키텍쳐는
+# 시각, 언어 및 오디오에서 매우 긴 시퀀스 모델링 작업에 대한 새로운 접근방식으로, 수만 단계에 걸친 
+# 의존성을 담을 수 있는 능력을 보여줍니다. 특히 인상적인 것은
+# [Long Range Arena](https://github.com/google-research/long-range-arena) 벤치마크에서의 결과로 
+# 최대 **16,000+** 이상의 요소에 대한 시퀀스에서 높은 정확도로 추론할 수 있는 능력을 보여줍니다.
 
 # <img src="images/table.png" width="100%"/>
 
@@ -105,12 +104,7 @@ if __name__ == "__main__":
 
 # ## Part 1: State Space Models
 
-# Let's get started! Our goal is the efficient
-# modeling of long sequences. To do this, we are going to build a
-# new neural network layer based on State Space Models. By the end of
-# this section we will be able to build and run a model with this layer.
-# However, we are going to need some technical background. Let's work
-# our way through the background of the paper.
+# 시작해봅시다! 우리의 목표는 긴 시퀀스의 효율적인 모델링입니다. 이를 위해, 우리는 상태 공간 모델을 기반으로 하는 새로운 신경망 레이어를 구축할 것입니다. 이 섹션의 끝까지 이 레이어를 사용하여 모델을 구축하고 실행할 수 있게 될 것입니다. 하지만, 우리는 몇 가지 기술적인 배경 지식이 필요합니다. 논문의 배경을 통해 함께 알아가 봅시다.
 
 # > The [state space model](https://en.wikipedia.org/wiki/State-space_representation) is defined by this simple equation.
 # > It maps a 1-D input signal $u(t)$ to an $N$-D latent state $x(t)$
@@ -214,7 +208,7 @@ def run_SSM(A, B, C, u):
 
 # ### Tangent: A Mechanics Example
 
-#  SSM 구현을 더 직관적으로 이해하기 위해, 머신러닝에서 잠깐 물러서서, [역학에서 고전적인 예제](https://en.wikipedia.org/wiki/State-space_representation#Moving_object_example) 를 살펴봅니다.
+#  SSM 구현을 더 직관적으로 이해하기 위해, 머신러닝에서 잠깐 물러서서, [역학분야에서의 고전적인 예제](https://en.wikipedia.org/wiki/State-space_representation#Moving_object_example)를 살펴봅니다.
  
 # 이 예제에서는 한 덩어리가 벽으로부터 전방위치 $y(t)$ 에 스프링으로 연결되어 있습니다.
 # 시간이 지나면서 이 덩어리는 다양한 힘 $u(t)$ 를 받습니다. 이 시스템의 매개변수는 질량 ($m$), 스프링 상수 ($k$), 마찰상수 ($b$) 로 구성되어 있습니다. 
@@ -243,13 +237,12 @@ def example_mass(k, b, m):
     return A, B, C
 
 
-#  Looking at the $\boldsymbol{C}$, we should be able to convince ourselves that the
-#  first dimension of the hidden state is the position (since that becomes $y(t)$).
-#  The second dimension is the velocity, as it is impacted by $u(t)$ through
-#  $\boldsymbol{B}$. The transition $\boldsymbol{A}$ relates these terms.
+#  $\boldsymbol{C}$ 를 보면, 은닉상태의 첫번째 차원이 위치라는 것을 알 수 있습니다 ($y(t)$ 가 되기 때문).
+#  두번째 차원은, $\boldsymbol{B}$ 를 통해 $u(t)$ 의 영향을 받으므로 속도가 됩니다. 
+#  전이행렬, $\boldsymbol{A}$ 는 이러한 항들을 관련짓습니다.
 #
 
-# We'll set $u$ to be a continuous function of $t$,
+# $u$ 를 $t$ 의 함수로 설정하면,
 
 
 @partial(np.vectorize, signature="()->()")
@@ -258,7 +251,7 @@ def example_force(t):
     return x * (x > 0.5)
 
 
-#  Let's run this SSM through our code.
+#  이 코드로 SSM 을 실행합니다.
 
 
 def example_ssm():
@@ -309,22 +302,18 @@ if False:
 
 # <img src="images/line.gif" width="100%">
 
-# Neat! And that it was just 1 SSM, with 2 hidden states over 100 steps.
-# The final model will have had **100s of stacked SSMs** over **thousands of steps**. But first – we
-# need to make these models practical to train.
+# 멋지네요! 은닉상태가 2개에 불과한 SSM 하나이며, 100 단계에 걸쳐 있습니다.
+# 최종모델은 **수천 스텝** 에 걸친 **수백개 스택의 SSM** 이 될 것입니다. 하지만 우선 이 모델들을 실제로 훈련될 수 있도록 만들어야 합니다.
 
-# ### Training SSMs: The Convolutional Representation
+# ### SSM 훈련: The Convolutional Representation
 
-# The punchline of this section is that we can turn the "RNN" above into a "CNN"
-# by unrolling. Let's go through the derivation.
+# 이 섹션에서 중요한 점은 위의 "RNN" 을 언롤링을 통해 "CNN" 으로 변환시킬 수 있다는 점입니다. 유도를 해 봅시다.
 
-# > The recurrent SSM is not practical for training on modern hardware
-# > due to its sequential nature.  Instead, there is a well-known connection
-# > between linear time-invariant (LTI) SSMs and
-# > continuous convolutions.  Correspondingly, the recurrent SSM can actually be
-# > written as a [discrete convolution](https://en.wikipedia.org/wiki/Convolution#Discrete_convolution).
-# >
-# > For simplicity let the initial state be $x_{-1} = 0$. Then unrolling  explicitly yields:
+# > recurrent SSM 은 시퀀셜한 속성때문에 현대 하드웨어를 이용하여 훈련하기에 실용적이지 않습니다.
+# > 대신, linear time-invariant (LTI) SSMs 과 연속 컨볼루션 사이에 잘 알려진 관계가 있습니다.
+# > 따라서 Recurrent SSM 은 사실 [discrete convolution](https://en.wikipedia.org/wiki/Convolution#Discrete_convolution) 으로 표현할 수 있습니다. 
+# > 
+# > 초기상태를 간단히 $x_{-1} = 0$ 라고 하면 명시적으로 펼치면 다음과 같이 됩니다:
 # >
 # $$
 # \begin{aligned}
