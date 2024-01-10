@@ -17,7 +17,7 @@
 # [Structured State Space for Sequence
 # Modeling](https://arxiv.org/abs/2111.00396) (S4) 아키텍쳐는
 # 시각, 언어 및 오디오에서 매우 긴 시퀀스 모델링 작업에 대한 새로운 접근방식으로, 수만 단계에 걸친 
-# 의존성을 담을 수 있는 능력을 보여줍니다. 특히 인상적인 것은
+# 의존성을 담을 수 있는 성능을 보여줍니다. 특히 인상적인 것은
 # [Long Range Arena](https://github.com/google-research/long-range-arena) 벤치마크에서의 결과로 
 # 최대 **16,000+** 이상의 요소에 대한 시퀀스에서 높은 정확도로 추론할 수 있는 능력을 보여줍니다.
 
@@ -106,29 +106,30 @@ if __name__ == "__main__":
 
 # 시작해봅시다! 우리의 목표는 긴 시퀀스의 효율적인 모델링입니다. 이를 위해, 우리는 상태 공간 모델을 기반으로 하는 새로운 신경망 레이어를 구축할 것입니다. 이 섹션의 끝까지 이 레이어를 사용하여 모델을 구축하고 실행할 수 있게 될 것입니다. 하지만, 우리는 몇 가지 기술적인 배경 지식이 필요합니다. 논문의 배경을 통해 함께 알아가 봅시다.
 
-# > The [state space model](https://en.wikipedia.org/wiki/State-space_representation) is defined by this simple equation.
-# > It maps a 1-D input signal $u(t)$ to an $N$-D latent state $x(t)$
-# > before projecting to a 1-D output signal $y(t)$.
+# > [state space model](https://en.wikipedia.org/wiki/State-space_representation) 은
+# > 이 간단한 방정식으로 정의됩니다.
+# > 이는 1차원 입력 신호 $u(t)$를 $N$차원 잠재 상태 $x(t)$로 매핑한 후,
+# > 1차원 출력 신호 $y(t)$로 투영합니다.
 # $$
 #   \begin{aligned}
 #     x'(t) &= \boldsymbol{A}x(t) + \boldsymbol{B}u(t) \\
 #     y(t) &= \boldsymbol{C}x(t) + \boldsymbol{D}u(t)
 #   \end{aligned}
 # $$
-# > Our goal is
-# > to simply use the SSM as a black-box representation in a deep
-# > sequence model, where $\boldsymbol{A}, \boldsymbol{B}, \boldsymbol{C}, \boldsymbol{D}$ are
-# > parameters learned by gradient descent.  For the remainder, we will
-# > omit the parameter $\boldsymbol{D}$ for exposition (or equivalently,
-# > assume $\boldsymbol{D} = 0$  because the term $\boldsymbol{D}u$ can be
-# > viewed as a skip connection and is easy to compute).
+# > 우리의 목표는
+# > SSM을 심층
+# > 시퀀스 모델에서 블랙박스 표현으로 단순하게 사용하는 것이며, 여기서 \(\boldsymbol{A}, \boldsymbol{B}, \boldsymbol{C}, \boldsymbol{D}\)는
+# > 경사 하강법으로 학습된 매개변수입니다. 나머지에 대해서는
+# > 설명을 위해 매개변수 \(\boldsymbol{D}\)를 생략하겠습니다(또는 동등하게,
+# > \(\boldsymbol{D} = 0\)라고 가정합니다. 왜냐하면 항 \(\boldsymbol{D}u\)는
+# > 스킵 연결로 볼 수 있고 계산하기 쉽기 때문입니다).
 # >
-# > An SSM maps a input $u(t)$ to a state representation vector $x(t)$ and an output $y(t)$.
-# > For simplicity, we assume the input and output are one-dimensional, and the state representation
-# > is $N$-dimensional. The first equation defines the change in $x(t)$ over time.
+# > SSM은 입력 \(u(t)\)를 상태 표현 벡터 \(x(t)\)와 출력 \(y(t)\)로 매핑합니다.
+# > 간단히 하기 위해, 입력과 출력을 일차원으로 가정하고, 상태 표현은
+# > \(N\)-차원으로 합니다. 첫 번째 방정식은 시간에 따른 \(x(t)\)의 변화를 정의합니다.
 
-# Our SSMs will be defined by three matrices – $\boldsymbol{A}, \boldsymbol{B}, \boldsymbol{C}$ – which
-# we will learn. For now we begin with a random SSM, to define sizes,
+# 우리의 SSM은 세 개의 행렬 - \(\boldsymbol{A}, \boldsymbol{B}, \boldsymbol{C}\) - 로 정의될 것이며,
+# 우리는 이것들을 학습할 것입니다. 우선 우리는 임의의 SSM으로 시작하여 크기를 정의합니다,
 
 
 def random_SSM(rng, N):
@@ -141,16 +142,16 @@ def random_SSM(rng, N):
 
 # ### Discrete-time SSM: The Recurrent Representation
 #
-# > To be applied on a discrete input sequence $(u_0, u_1, \dots )$
-# > instead of continuous function $u(t)$, the SSM must be
-# > discretized by a **step size** $\Delta$ that represents the
-# > resolution of the input.  Conceptually, the inputs $u_k$ can be
-# > viewed as sampling an implicit underlying continuous signal $u(t)$,
-# > where $u_k = u(k \Delta)$.
+# > 이산 입력 시퀀스 $(u_0, u_1, \dots )$에 적용되기 위해서
+# > 연속 함수 $u(t)$ 대신에, SSM은
+# > 입력의 해상도를 나타내는 **스텝 크기** $\Delta$에 의해
+# > 이산화되어야 합니다. 개념적으로, 입력 $u_k$는
+# > 내재적인 연속 신호 $u(t)$를 샘플링하는 것으로 볼 수 있으며,
+# > 여기서 $u_k = u(k \Delta)$ 입니다.
 # >
-# > To discretize the continuous-time SSM, we use
-# > the [bilinear method](https://en.wikipedia.org/wiki/Bilinear_transform), which converts the
-# > state matrix $\boldsymbol{A}$ into an approximation $\boldsymbol{\overline{A}}$.  The discrete SSM is:
+# > 연속 시간 SSM을 이산화하기 위해, 우리는
+# > [이중 선형 방법](https://en.wikipedia.org/wiki/Bilinear_transform)을 사용합니다. 이 방법은
+# > 상태 행렬 $\boldsymbol{A}$를 근사치 $\boldsymbol{\overline{A}}$로 변환합니다. 이산 SSM은:
 # $$
 # \begin{aligned}
 #   \boldsymbol{\overline{A}} &= (\boldsymbol{I} - \Delta/2 \cdot \boldsymbol{A})^{-1}(\boldsymbol{I} + \Delta/2 \cdot \boldsymbol{A}) \\
@@ -178,10 +179,11 @@ def discretize(A, B, C, step):
 # \end{aligned}
 # $$
 
-# As the paper says, this "step" function does look superficially like that of
-# an RNN. We can implement this with a
+# 논문에서 언급하듯이, 이 "단계" 함수는 겉보기에
+# RNN의 그것과 유사해 보입니다. 이를
+# JAX의
 # [scan](https://jax.readthedocs.io/en/latest/_autosummary/jax.lax.scan.html)
-# in JAX,
+# 함수를 사용하여 구현할 수 있습니다,
 
 
 def scan_SSM(Ab, Bb, Cb, u, x0):
@@ -193,8 +195,9 @@ def scan_SSM(Ab, Bb, Cb, u, x0):
     return jax.lax.scan(step, x0, u)
 
 
-# Putting everything together, we can run the SSM
-# by first discretizing, then iterating step by step,
+# 모든 것을 종합하여, 우리는 SSM을
+# 먼저 이산화한 다음, 단계별로 반복함으로써 실행할 수 있습니다,
+
 
 
 def run_SSM(A, B, C, u):
@@ -328,7 +331,7 @@ if False:
 # \end{aligned}
 # $$
 # >
-# > This can be vectorized into a convolution with an explicit formula for the convolution kernel.
+# > 컨볼루션 커널에 관한 명시적 공식으로 컨볼루션으로 벡터화될 수 있습니다.
 # >
 # $$
 # \begin{aligned}
@@ -343,9 +346,9 @@ if False:
 #   \boldsymbol{\overline{K}} \in \mathbb{R}^L  = (\boldsymbol{\overline{C}}\boldsymbol{\overline{B}}, \boldsymbol{\overline{C}}\boldsymbol{\overline{A}}\boldsymbol{\overline{B}}, \dots, \boldsymbol{\overline{C}}\boldsymbol{\overline{A}}^{L-1}\boldsymbol{\overline{B}})
 # \end{aligned}
 # $$
-# We call $\boldsymbol{\overline{K}}$ the **SSM convolution kernel** or filter.
-
-# Note that this is a *giant* filter. It is the size of the entire sequence!
+# $\boldsymbol{\overline{K}}$ 을 **SSM convolution kernel** 이나 필터라고 부릅니다.
+    
+# *엄청난 크기의* 필터입니다. 전체 시퀀스 크기입니다!
 
 
 def K_conv(Ab, Bb, Cb, L):
@@ -359,10 +362,10 @@ def K_conv(Ab, Bb, Cb, L):
 # now we just keep it around as a placeholder.
 
 
-# We can compute the result of applying this filter either with a standard direct convolution or
-# by using convolution theorem with [Fast Fourier Transform (FFT)](https://en.wikipedia.org/wiki/Convolution_theorem). The discrete convolution theorem - for circular convolution of two sequences - allows us to efficiently calculate the output of convolution by first multiplying FFTs of the input sequences and then applying an inverse FFT. To utilize this theorem for non-circular convolutions as in our case, we need to pad the input sequences with zeros, and then unpad the output sequence.
-# As the length gets longer this FFT method will be more efficient than the direct convolution,
-
+# 이 필터를 적용한 결과는 표준디렉트컨볼류션을 사용하거나, [Fast Fourier Transform (FFT)](https://en.wikipedia.org/wiki/Convolution_theorem) 을 사용한 컨볼류션 정리를 사용하여 계산할 수 있습니다.
+# 이산 컨볼루션 정리는 두 시퀀스의 원형 컨볼루션을 효율적으로 계산할 수 있게 해주며, 입력 시퀀스의 FFT를 먼저 곱한 다음 역 FFT 를 적용하여 컨볼류션의 출력을 계산합니다. 
+# 우리 사례와 같은 비원형 컨볼류션에 이 정리를 활용하기 위해서는, 입력시퀀스를 0으로 패딩한 다음 출력 시퀀스의 패딩을 제거해야 합니다. 
+# 길이가 길어질수록 이 FFT 방법은 직접컨볼루션보다 더 효율적입니다.
 
 def causal_convolution(u, K, nofft=False):
     if nofft:
@@ -375,7 +378,7 @@ def causal_convolution(u, K, nofft=False):
         return np.fft.irfft(out)[: u.shape[0]]
 
 
-# The CNN method and the RNN method yield (roughly) the same result,
+# CNN 방법과 RNN 방법은 (대략) 같은 결과를 냅니다,
 
 
 def test_cnn_is_rnn(N=4, L=16, step=1.0 / 16):
@@ -602,24 +605,20 @@ BatchStackedModel = nn.vmap(
 # Full code for training is defined in
 # [training.py](https://github.com/srush/s4/blob/main/s4/train.py).
 
-# While we now have our main model, there are *two core problems with SSMs*. First, the randomly initialized SSM actually does not perform very well. Furthermore, computing it naively like we've done so far is really slow and memory inefficient.
-# Next, we'll complete our discussion of the modeling aspect of S4 by defining a special initialization for long-range dependencies,
-# and then figure out how to compute this SSM Layer faster – a lot faster (<a href="#part-2-implementing-s4">Part 2</a>)!
+# 메인모델을 만들었지만, *SSMs 에 두 가지 핵심 문제* 가 있습니다. 
+# 첫번째로, 랜덤으로 초기화된 SSM 은 실제로 잘 작동하지 않습니다. 더군다나, 지금까지 한 것처럼 순진하게 계산하면 매우 느리고, 메모리 비효율적이 됩니다.
+# 다음으로, long-range dependencies 를 위해 특별한 초기화를 정의해서 S4 의 모델링 측면에 대해 논의를 완성하려고 합니다. 그 후 이 SSM 을 훨씬 빠르게 (<a href="#part-2-implementing-s4">Part 2</a>) 하는 법을 알아봅니다!
 
-
-# ## Part 1b: Addressing Long-Range Dependencies with HiPPO
+# ## Part 1b: HiPPO 로 Long-Range Dependencies 해결
 
 # <img src="images/hippo.png" width="100%"/>
 #
-# > [Prior work](https://arxiv.org/abs/2008.07669) found that the basic SSM actually performs very poorly in
-# > practice.  Intuitively, one explanation is that they  suffer from gradients scaling exponentially in the sequence length (i.e., the
-# > vanishing/exploding gradients problem).  To address this problem, previous work developed the HiPPO theory of
-# > continuous-time memorization.
+# > [이전 연구](https://arxiv.org/abs/2008.07669) 에서 기본 SSM 은 실제로 성능이 매우 나빴습니다. 직관적인 설명은,  시퀀스 길이에서 기하급수적으로 그래디언트 스케일링 문제(i.e., the
+# > vanishing/exploding gradients problem) 입니다. 이를 해결하기 위해 이전 연구에서 HiPPO theory of continuous-time memorization 이 개발되었습니다.
 # >
-# > HiPPO specifies a class of certain matrices $\boldsymbol{A} \in \mathbb{R}^{N \times N}$ that when incorporated,
-# > allow the state $x(t)$ to memorize the history of the input $u(t)$.
-# > The most important matrix in this class is defined by the HiPPO matrix.
-# >
+# > HiPPO 는 특정 행렬 $\boldsymbol{A} \in \mathbb{R}^{N \times N}$ 의 클래스를 지정합니다. 
+# > 이 행렬이 포함되었을 때, 상태 $x(t)$ 가 입력 $u(t)$ 의 과거를 기억할 수 있도록 합니다.
+# > 이 클래스에서 가장 중요한 행렬은 HiPPO 행렬로 정의됩니다.
 # $$
 # \begin{aligned}
 #   (\text{\textbf{HiPPO Matrix}})
@@ -634,17 +633,10 @@ BatchStackedModel = nn.vmap(
 # \end{aligned}
 # $$
 # >
-# > Previous work found that simply modifying an SSM from a random matrix $\boldsymbol{A}$ to HiPPO
-# > improved its performance on the sequential MNIST classification benchmark from $60\%$ to $98\%$.
+# > 이전 연구에서는 단순히 무작위 행렬 $\boldsymbol{A}$ 에서 HiPPO 로 SSM 을 변경하는 것이 시퀀셜 MNIST 분류 벤치마크에서 성능을 $60\%$ 에서 $98\%$ 로 향상시켰습니다.
 
 
-# This matrix is going to be really important, but it is a bit of
-# magic. For our purposes we mainly need to know that: 1) we only need to
-# calculate it once, and 2) it has a nice, simple structure (which we will exploit in
-# part 2). Without going into the ODE math, the main takeaway
-# is that this matrix aims to compress the past history into a state
-# that has enough information to approximately reconstruct the history.
-
+# 이 행렬은 매우 중요할 것이지만, 마법처럼 보입니다. 우리의 목적을 위해서는 주로 1) 이 행렬을 한 번만 계산하면 된다는 것과 2) 이 행렬이 좋고, 단순한 구조를 가지고 있다는 것(우리는 이를 2부에서 활용할 것입니다)을 알아야 합니다. ODE 수학에 깊이 들어가지 않아도, 이 행렬의 주된 목표는 과거의 역사를 압축하여 역사를 대략적으로 재구성할 수 있는 충분한 정보를 가진 상태로 만드는 것입니다.
 
 def make_HiPPO(N):
     P = np.sqrt(1 + 2 * np.arange(N))
@@ -652,14 +644,7 @@ def make_HiPPO(N):
     A = np.tril(A) - np.diag(np.arange(N))
     return -A
 
-
-# Diving a bit deeper, the intuitive explanation of this matrix is
-# that it produces a hidden state that memorizes its history. It does
-# this by keeping track of the coefficients of a [Legendre
-# polynomial](https://en.wikipedia.org/wiki/Legendre_polynomials). These
-# coefficients let it approximate all of the previous history. Let us
-# look at an example,
-
+# 조금 더 깊이 들어가 보면, 이 행렬의 직관적인 설명은 그것이 그 역사를 기억하는 숨겨진 상태를 만들어낸다는 것입니다. 이는 [Legendre polynomial](https://en.wikipedia.org/wiki/Legendre_polynomials)의 계수를 추적함으로써 이루어집니다. 이 계수들은 그것이 이전의 모든 역사를 근사하게 할 수 있게 합니다. 예를 들어 살펴보겠습니다,
 
 def example_legendre(N=8):
     # Random hidden state as coefficients
@@ -711,16 +696,12 @@ def example_legendre(N=8):
 if False:
     example_legendre()
 
-# The red line represents that curve we are approximating,
-# while the black bars represent the values of our hidden state.
-# Each is a coefficient for one element of the Legendre series
-# shown as blue functions. The intuition is that the HiPPO matrix
-# updates these coefficients each step.
+# 빨간 선은 우리가 근사하고 있는 그 곡선을 나타내며, 검은 막대는 우리의 숨겨진 상태의 값들을 나타냅니다. 각각은 파란색 함수로 나타낸 르장드르 급수의 한 요소에 대한 계수입니다. 직관적으로 이해하자면, HiPPO 행렬은 이러한 계수들을 각 단계마다 업데이트합니다.
 
 # <img src="images/leg.png" width="100%">
 
 
-# ## Part 2: Implementing S4
+# ## Part 2: S4 구현
 
 # Warning: this section has a lot of math. Roughly it boils down to finding a
 # way to compute the filter from Part 1 for "HiPPO-like" matrices *really
@@ -729,8 +710,8 @@ if False:
 
 # [Skip Button](#part-3-s4-in-practice)
 
-# To set the stage, recall that S4 has two main differences from a basic SSM. The first addresses a *modeling challenge* - long-range dependencies - by using a special formula for the $\boldsymbol{A}$ matrix defined in the previous part. These special SSMs were considered in [predecessor](https://arxiv.org/abs/2110.13985) works to S4.
-
+# S4가 기본 SSM과 두 가지 주요한 차이점을 가지고 있다는 것을 기억하세요. 첫 번째는 이전 부분에서 정의된 $\boldsymbol{A}$ 행렬에 대한 특별한 공식을 사용함으로써 *모델링에서의 문제* 즉, 장거리 의존성 - 을 해결합니다. 이러한 특별한 SSM은 [선행](https://arxiv.org/abs/2110.13985) 연구들에서 S4 에 고려되었습니다.
+    
 # The second main feature of S4 solves the *computational challenge* of SSMs by introducing a special representation and algorithm to be able to work with this matrix!
 
 
