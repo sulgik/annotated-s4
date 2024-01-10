@@ -27,11 +27,11 @@
 # 매우 다른 접근 방식을 취하고 있어 상쾌합니다. 그러나,
 # 여러 동료들이 모델에 대한 직관을 얻기 어렵다고 사적으로 지적한 바 있습니다.
 # 이 블로그 게시물은 직관을 얻기 위한 첫 단계로, 구체적인 코드
-# 구현과 S4 논문의 설명을 연결합니다 - [주석이 달린
-# 트랜스포머](https://nlp.seas.harvard.edu/2018/04/03/attention.html)의 스타일로 매우 유사합니다.
-# 이렇게 코드와 문해력 있는 설명의 조합이
-# 모델의 세부 사항을 따라가는 데 도움이 되기를 바랍니다. 이 블로그를 다 읽으면
-# 효율적인 작동 버전의 S4를 갖게 될 것이며, 이는 훈련 시 CNN으로 작동할 수 있고,
+# 구현과 S4 논문의 설명을 연결합니다 ([the annotated 
+# Transformer](https://nlp.seas.harvard.edu/2018/04/03/attention.html) 스타일).
+# 코드와 문해력 있는 설명이
+# 모델을 디테일하게 이해하는데 도움이 되기를 바랍니다. 이 블로그를 다 읽으면
+# 효율적인 작동 버전의 S4 를 갖게 될 것이며, 이는 훈련 시 CNN 으로 작동할 수 있고,
 # 테스트 시에는 효율적인 RNN으로 전환할 수 있습니다. 결과를 미리 보면,
 # 표준 GPU 에서 픽셀로부터 이미지를 생성하고 오디오 파형으로부터 직접 소리를 생성할 수 있습니다.
 #
@@ -53,7 +53,7 @@
 #     - [Tangent: A Mechanics Example]
 #     - [Training SSMs: The Convolutional Representation]
 #     - [An SSM Neural Network.]
-# * [Part 1b: HiPPO 로 긴범위 의존성 해결하기]
+# * [Part 1b: HiPPO 로 long-range 의존성 해결]
 # * [Part 2: S4 구현] (Advanced)
 #     - [Step 1. SSM Generating Functions]
 #     - [Step 2: Diagonal Case]
@@ -123,12 +123,12 @@ if __name__ == "__main__":
 # > $\boldsymbol{D} = 0$ 으로 가정합니다. 왜냐하면 항 $\boldsymbol{D}u$ 는
 # > 스킵 커넥션으로 볼 수 있고 계산하기 쉽기 때문입니다).
 # >
-# > SSM은 입력 $u(t)$를 상태 표현 벡터 $x(t)$와 출력 $y(t)$로 매핑합니다.
-# > 간단히 하기 위해, 입력과 출력을 일차원으로 가정하고, 상태 표현은
+# > SSM 은 입력 $u(t)$ 를 상태 표현 벡터 $x(t)$ 와 출력 $y(t)$ 로 매핑합니다.
+# > 단순화하여, 입력과 출력을 일차원으로 가정하고, 상태 표현은
 # > $N$-차원으로 합니다. 첫 번째 방정식은 시간에 따른 $x(t)$의 변화를 정의합니다.
 
-# 우리의 SSM은 세 개의 행렬 - $\boldsymbol{A}, \boldsymbol{B}, \boldsymbol{C}$ - 로 정의될 것이며,
-# 우리는 이것들을 학습할 것입니다. 우선 우리는 임의의 SSM으로 시작하여 크기를 정의합니다,
+# 우리의 SSM 은 세 개의 행렬 - $\boldsymbol{A}, \boldsymbol{B}, \boldsymbol{C}$ - 로 정의될 것이며,
+# 우리는 이것들을 학습할 것입니다. 우선 우리는 임의의 SSM 으로 시작하여 크기를 정의합니다,
 
 
 def random_SSM(rng, N):
@@ -145,7 +145,7 @@ def random_SSM(rng, N):
 # > 연속함수 $u(t)$ 대신,
 # > 입력의 해상도를 나타내는 **스텝 크기** $\Delta$ 를 이용하여
 # > SSM 을 이산화해야 합니다. 개념적으로, 입력 $u_k$ ($= u(k \Delta)$) 는
-# > 내재적인 연속신호 $u(t)$ 를 샘플링하는 것으로 볼 수 있다.
+# > 내재적인 연속신호 $u(t)$ 를 샘플링하는 것으로 볼 수 있습니다.
 # >
 # > continuous-time SSM 을 이산화하기 위해, 우리는
 # > [bilinear method](https://en.wikipedia.org/wiki/Bilinear_transform) 를 사용합니다. 이 방법은
@@ -166,10 +166,9 @@ def discretize(A, B, C, step):
     Bb = (BL * step) @ B
     return Ab, Bb, C
 
-
-# > This equation is now a *sequence-to-sequence* map $u_k \mapsto y_k$ instead of function-to-function.
-# > Moreover the state equation is now a recurrence in $x_k$, allowing the discrete SSM to be computed like an RNN.
-# > Concretely, $x_k \in \mathbb{R}^N$ can be viewed as a *hidden state* with transition matrix $\boldsymbol{\overline{A}}$.
+# > 이 방정식은 이제 함수에서 함수로의 매핑이 아닌 *시퀀스-투-시퀀스* 매핑 $u_k \mapsto y_k$ 입니다.
+# > 또한, 상태 방정식은 이제 $x_k$ 에서의 반복으로, 이산 SSM 이 RNN 처럼 계산될 수 있게 합니다.
+# > 구체적으로, $x_k \in \mathbb{R}^N$ 는 전이행렬 $\boldsymbol{\overline{A}}$ 를 가진 *은닉상태* 로 간주할 수 있습니다.
 # $$
 # \begin{aligned}
 #   x_{k} &= \boldsymbol{\overline{A}} x_{k-1} + \boldsymbol{\overline{B}} u_k\\
