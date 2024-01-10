@@ -1,4 +1,4 @@
-# <center><h1> The Annotated S4 </h1></center>
+# <center><h1> The Annotated S4 (한국어)</h1></center>
 #
 #
 # <center>
@@ -11,7 +11,7 @@
 # <img src="images/hero.png" width="100%"/>
 
 
-# *[Sasha Rush](http://rush-nlp.com/) and [Sidd Karamcheti](https://www.siddkaramcheti.com/) 의 블로그와 [라이브러리](https://github.com/srush/annotated-s4/) by *, v3
+# *[Sasha Rush](http://rush-nlp.com/) 와 [Sidd Karamcheti](https://www.siddkaramcheti.com/) 의 블로그와 [라이브러리](https://github.com/srush/annotated-s4/) by *, v3
 
 #
 # The [Structured State Space for Sequence
@@ -214,12 +214,11 @@ def run_SSM(A, B, C, u):
 
 # ### Tangent: A Mechanics Example
 
-#  To gain some more intuition and test our SSM implementation, we pause
-#  from machine learning to implement a [classic example from mechanics](https://en.wikipedia.org/wiki/State-space_representation#Moving_object_example).
-#
-#  In this example, we consider the forward position $y(t)$ of a mass attached to a wall with a spring.
-#  Over time, varying force $u(t)$ is applied to this mass. The system is parameterized by mass ($m$),
-#  spring constant ($k$), friction constant ($b$). We can relate these with the following differential equation:
+#  SSM 구현을 더 직관적으로 이해하기 위해, 머신러닝에서 잠깐 물러서서, [역학에서 고전적인 예제](https://en.wikipedia.org/wiki/State-space_representation#Moving_object_example) 를 살펴봅니다.
+ 
+# 이 예제에서는 한 덩어리가 벽으로부터 전방위치 $y(t)$ 에 스프링으로 연결되어 있습니다.
+# 시간이 지나면서 이 덩어리는 다양한 힘 $u(t)$ 를 받습니다. 이 시스템의 매개변수는 질량 ($m$), 스프링 상수 ($k$), 마찰상수 ($b$) 로 구성되어 있습니다. 
+# 다음의 미분방정식을 통해 이들 관계를 나타냅니다:
 
 # $$\begin{aligned}
 # my''(t) = u(t) - by'(t) - ky(t)
@@ -227,7 +226,7 @@ def run_SSM(A, B, C, u):
 # $$
 
 
-# Rewriting this in matrix form yields an SSM in the following form:
+# 행렬을 이용하면 다음의 요소로 이루어진 SSM 이 됩니다:
 
 # $$
 # \begin{aligned}
