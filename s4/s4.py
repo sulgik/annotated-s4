@@ -25,12 +25,12 @@
 
 # 이 논문은 트랜스포머(Transformer)에서 벗어나 중요한 문제 영역에 대해
 # 매우 다른 접근 방식을 취하고 있어 상쾌합니다. 그러나,
-# 여러 동료들이 모델에 대한 직관을 얻기 어렵다고 사적으로 지적한 바 있습니다.
-# 이 블로그 게시물은 직관을 얻기 위한 첫 단계로, 구체적인 코드
-# 구현과 S4 논문의 설명을 연결합니다 ([the annotated 
+# 모델에 대한 직관을 얻기 어렵다고 지적한 동료들이 많았습니다.
+# 이 블로그 게시물은 직관을 얻기 위한 첫 단계입니다.
+# S4 논문의 설명에 대해 구체적인 코드로 구현합니다 ([the annotated 
 # Transformer](https://nlp.seas.harvard.edu/2018/04/03/attention.html) 스타일).
 # 코드와 문해력 있는 설명이
-# 모델을 디테일하게 이해하는데 도움이 되기를 바랍니다. 이 블로그를 다 읽으면
+# 모델을 자세하게 이해하는데 도움이 되기를 바랍니다. 이 블로그를 다 읽으면
 # 효율적인 작동 버전의 S4 를 갖게 될 것이며, 이는 훈련 시 CNN 으로 작동할 수 있고,
 # 테스트 시에는 효율적인 RNN으로 전환할 수 있습니다. 결과를 미리 보면,
 # 표준 GPU 에서 픽셀로부터 이미지를 생성하고 오디오 파형으로부터 직접 소리를 생성할 수 있습니다.
@@ -73,7 +73,7 @@
 # <nav id="TOC">
 
 # 이 프로젝트는 [JAX](https://github.com/google/jax/)를 사용하며
-# [Flax](https://github.com/google/flax) NN 라이브러리와 함께합니다. 우리는 개인적으로 주로 Torch를 사용하지만,
+# [Flax](https://github.com/google/flax) NN 라이브러리와 함께합니다. 개인적으로 Torch 를 주로 사용하지만,
 # JAX 의 함수적 특성은 S4 의 복잡성에 잘 맞습니다. 우리는
 # [vmap](https://jax.readthedocs.io/en/latest/jax.html#jax.vmap),
 # [scan](https://jax.readthedocs.io/en/latest/_autosummary/jax.lax.scan.html),
@@ -128,7 +128,7 @@ if __name__ == "__main__":
 # > $N$-차원으로 합니다. 첫 번째 방정식은 시간에 따른 $x(t)$의 변화를 정의합니다.
 
 # 우리의 SSM 은 세 개의 행렬 - $\boldsymbol{A}, \boldsymbol{B}, \boldsymbol{C}$ - 로 정의될 것이며,
-# 우리는 이것들을 학습할 것입니다. 우선 우리는 임의의 SSM 으로 시작하여 크기를 정의합니다,
+# 우리는 이것들을 학습할 것입니다. 사이즈만 정의하기 위해 우선 임의의 SSM 으로 시작합니다,
 
 
 def random_SSM(rng, N):
@@ -149,7 +149,7 @@ def random_SSM(rng, N):
 # >
 # > continuous-time SSM 을 이산화하기 위해, 우리는
 # > [bilinear method](https://en.wikipedia.org/wiki/Bilinear_transform) 를 사용합니다. 이 방법은
-# > 상태 행렬 $\boldsymbol{A}$를 근사 $\boldsymbol{\overline{A}}$로 변환합니다. 이산 SSM은:
+# > 상태 행렬 $\boldsymbol{A}$를 근사 $\boldsymbol{\overline{A}}$ 로 변환합니다. 이산 SSM 은:
 # $$
 # \begin{aligned}
 #   \boldsymbol{\overline{A}} &= (\boldsymbol{I} - \Delta/2 \cdot \boldsymbol{A})^{-1}(\boldsymbol{I} + \Delta/2 \cdot \boldsymbol{A}) \\
@@ -166,7 +166,7 @@ def discretize(A, B, C, step):
     Bb = (BL * step) @ B
     return Ab, Bb, C
 
-# > 이 방정식은 이제 함수에서 함수로의 매핑이 아닌 *시퀀스-투-시퀀스* 매핑 $u_k \mapsto y_k$ 입니다.
+# > 이 방정식은 이제 function-to-function 매핑이 아닌 *sequence-to-sequence* 매핑 $u_k \mapsto y_k$ 입니다.
 # > 또한, 상태 방정식은 이제 $x_k$ 에서의 반복으로, 이산 SSM 이 RNN 처럼 계산될 수 있게 합니다.
 # > 구체적으로, $x_k \in \mathbb{R}^N$ 는 전이행렬 $\boldsymbol{\overline{A}}$ 를 가진 *은닉상태* 로 간주할 수 있습니다.
 # $$
@@ -208,9 +208,9 @@ def run_SSM(A, B, C, u):
 
 # SSM 구현을 더 직관적으로 이해하기 위해, 머신러닝에서 잠깐 물러서서, [역학분야에서의 고전적인 예제](https://en.wikipedia.org/wiki/State-space_representation#Moving_object_example)를 살펴봅니다.
  
-# 이 예제에서는 한 덩어리가 벽으로부터 전방위치 $y(t)$ 에 스프링으로 연결되어 있습니다.
-# 시간이 지나면서 이 덩어리는 다양한 힘 $u(t)$ 를 받습니다. 이 시스템의 매개변수는 질량 ($m$), 스프링 상수 ($k$), 마찰상수 ($b$) 로 구성되어 있습니다. 
-# 다음의 미분방정식을 통해 이들 관계를 나타냅니다:
+# 이 예제에서는 한 물체가 벽으로부터 전방위치 $y(t)$ 에 스프링으로 연결되어 있습니다.
+# 시간이 지나면서 이 물체는 다양한 힘 $u(t)$ 를 받습니다. 이 시스템의 매개변수는 질량 ($m$), 스프링 상수 ($k$), 마찰상수 ($b$) 로 구성되어 있습니다. 
+# 다음 미분방정식을 통해 이들 관계를 나타냅니다:
 
 # $$\begin{aligned}
 # my''(t) = u(t) - by'(t) - ky(t)
@@ -300,18 +300,18 @@ if False:
 
 # <img src="images/line.gif" width="100%">
 
-# 멋지네요! 은닉상태가 2개에 불과한 SSM 하나이며, 100 단계에 걸쳐 있습니다.
+# 멋지네요! 은닉상태가 2개인 SSM 이며, 100 단계에 걸쳐 있습니다.
 # 최종모델은 **수천 스텝** 에 걸친 **수백개 스택의 SSM** 이 될 것입니다. 하지만 우선 이 모델들을 실제로 훈련될 수 있도록 만들어야 합니다.
 
 # ### SSM 훈련: The Convolutional Representation
 
-# 이 섹션에서 중요한 점은 위의 "RNN" 을 언롤링을 통해 "CNN" 으로 변환시킬 수 있다는 점입니다. 유도를 해 봅시다.
+# 이 섹션에서 중요한 점은 위의 "RNN" 을 펼쳐서(언롤링을 통해) "CNN" 으로 변환시킬 수 있다는 점입니다. 유도를 해 봅시다.
 
-# > recurrent SSM 은 시퀀셜한 속성때문에 현대 하드웨어를 이용하여 훈련하기에 실용적이지 않습니다.
+# > recurrent SSM 은 시퀀셜한 속성때문에 현재의 하드웨어로 training 하기에 실용적이지 않습니다.
 # > 대신, linear time-invariant (LTI) SSMs 과 연속 컨볼루션 사이에 잘 알려진 관계가 있습니다.
 # > 따라서 Recurrent SSM 은 사실 [discrete convolution](https://en.wikipedia.org/wiki/Convolution#Discrete_convolution) 으로 표현할 수 있습니다. 
 # > 
-# > 초기상태를 간단히 $x_{-1} = 0$ 라고 하면 명시적으로 펼치면 다음과 같이 됩니다:
+# > 초기상태를 간단히 $x_{-1} = 0$ 라고 하면 명시적으로 언롤링하면 다음과 같이 됩니다:
 # >
 # $$
 # \begin{aligned}
@@ -358,7 +358,7 @@ def K_conv(Ab, Bb, Cb, L):
 
 
 # 이 필터를 적용한 결과는 표준디렉트컨볼루션을 사용하거나, [Fast Fourier Transform (FFT)](https://en.wikipedia.org/wiki/Convolution_theorem) 을 사용한 컨볼루션 정리를 사용하여 계산할 수 있습니다.
-# 이산 컨볼루션 정리는 두 시퀀스의 원형 컨볼루션을 효율적으로 계산할 수 있게 해주며, 입력 시퀀스의 FFT를 먼저 곱한 다음 역 FFT 를 적용하여 컨볼루션의 출력을 계산합니다. 
+# 두 시퀀스의 circular 컨볼루션에 대한 이산 컨볼루션 정리를 이용하면 컨볼루션의 출력을 효율적으로 계산할 수 있습니다. 구체적으로는 입력 시퀀스의 FFT를 먼저 곱한 다음 역 FFT 를 적용합니다. 
 # 우리 사례와 같은 비원형 컨볼루션에 이 정리를 활용하기 위해서는, 입력시퀀스를 0으로 패딩한 다음 출력 시퀀스의 패딩을 제거해야 합니다. 
 # 길이가 길어질수록 이 FFT 방법은 직접컨볼루션보다 더 효율적입니다.
 
@@ -393,12 +393,10 @@ def test_cnn_is_rnn(N=4, L=16, step=1.0 / 16):
 
 # ### An SSM Neural Network.
 
-# We now have all of the machinery needed to build a basic SSM neural network layer.
-# As defined above, the discrete SSM defines a map from $\mathbb{R}^L
-# \to \mathbb{R}^L$, i.e. a 1-D sequence map. We assume that we
-# are going to be learning the parameters $B$ and $C$, as well as a
-# step size $\Delta$ and a scalar $D$ parameter. The HiPPO matrix is
-# used for the transition $A$. We learn the step size in log space.
+# 이제 기본 SSM 신경망 레이어를 구축하기 위한 모든 장치를 갖추게 되었습니다.
+# 위에서 정의한 바와 같이, 이산 SSM 은 $\mathbb{R}^L$ 에서 $\mathbb{R}^L$ 로의 매핑을 정의합니다, 
+# 즉, 1-D 시퀀스 맵입니다. 우리는 $B$ 및 $C$ 매개변수, 그리고 스텝 크기 $\Delta$ 및 스칼라 $D$ 매개변수를 학습할 것이라고 가정합니다.
+# HiPPO 행렬은 전환 $A$ 에 사용됩니다. 우리는 로그 공간에서 스텝 크기를 학습합니다.
 
 
 def log_step_initializer(dt_min=0.001, dt_max=0.1):
@@ -409,18 +407,14 @@ def log_step_initializer(dt_min=0.001, dt_max=0.1):
 
     return init
 
-
-# For the SSM layer most of the work is to build the filter.
-# The actual call to the network is just the (huge) convolution we specified above.
+# SSM 레이어에서 대부분의 작업은 필터를 구축하는 것입니다.
+# 실제 네트워크 호출은 위에서 명시한 (거대한) 컨볼루션일 뿐입니다.
 #
-# Note for Torch users: `setup` in Flax is called each time the parameters are updated.
-# This is similar to the
-# [Torch parameterizations](https://pytorch.org/tutorials/intermediate/parametrizations.html).
+# Torch 사용자를 위한 참고: Flax 의 `setup` 은 매개변수가 업데이트될 때마다 호출됩니다.
+# 이는 [Torch 매개변수화](https://pytorch.org/tutorials/intermediate/parametrizations.html)와 유사합니다.
 #
-# As noted above this same layer can be used either as an RNN or a CNN. The argument
-# `decode` determines which path is used. In the case of RNN we cache the previous state
-# at each call in a Flax variable collection called `cache`.
-
+# 위에서 언급했듯이, 이 같은 레이어는 RNN 또는 CNN 으로 사용될 수 있습니다. `decode` 인수는 사용할 경로를 결정합니다. RNN 의 경우, 
+# 우리는 각 호출에서 이전 상태를 Flax 변수 컬렉션인 `cache` 에 캐시합니다.
 
 class SSMLayer(nn.Module):
     N: int
@@ -456,11 +450,10 @@ class SSMLayer(nn.Module):
             return y_s.reshape(-1).real + self.D * u
 
 
-# Since our SSMs operate on scalars, we make $H$ different, stacked copies ($H$ different SSMs!) with
-# different parameters. Here we use the [Flax vmap](
+# 우리의 SSM 이 스칼라들에 작동하기 때문에, 우리는 다른 매개변수들을 가진 $H$ 개의 다른, 쌓인 복사본들($H$ 개의 다른 SSM 들!)을 만듭니다.
+# 여기에서는 이러한 복사본들을 쉽게 정의하기 위해 [Flax vmap](
 # https://flax.readthedocs.io/en/latest/_autosummary/flax.linen.vmap.html)
-# method to easily define these copies,
-
+# 메소드를 사용합니다.
 
 def cloneLayer(layer):
     return nn.vmap(
@@ -474,10 +467,9 @@ def cloneLayer(layer):
 
 SSMLayer = cloneLayer(SSMLayer)
 
-
-# This SSM Layer can then be put into a standard NN.
-# Here we add a block that pairs a call to an SSM with
-# dropout and a linear projection.
+# 이 SSM 레이어는 표준 NN 에 삽입될 수 있습니다.
+# 여기에서는 SSM 에 대한 호출과
+# 드롭아웃 및 선형 투영을 결합하는 블록을 추가합니다.
 
 
 class SequenceBlock(nn.Module):
@@ -518,9 +510,9 @@ class SequenceBlock(nn.Module):
         return x
 
 
-# We can then stack a bunch of these blocks on top of each other
-# to produce a stack of SSM layers. This can be used for
-# classification or generation in the standard way as a Transformer.
+# 그런 다음 이러한 블록들을 서로 위에 쌓아서
+# SSM 레이어들의 스택을 생성할 수 있습니다. 이것은 트랜스포머와 같은 표준 방식으로
+# 분류나 생성에 사용될 수 있습니다.
 
 
 class Embedding(nn.Embed):
@@ -580,9 +572,8 @@ class StackedModel(nn.Module):
         return nn.log_softmax(x, axis=-1)
 
 
-# In Flax we add the batch dimension as a lifted transformation.
-# We need to route through several variable collections which
-# handle RNN and parameter caching (described below).
+# Flax 에서는 배치 차원을 리프트된 변환으로 추가합니다.
+# RNN 및 매개변수 캐싱(아래에서 설명됨)을 처리하는 여러 변수 컬렉션을 통해 경로를 설정해야 합니다.
 
 
 BatchStackedModel = nn.vmap(
@@ -593,12 +584,11 @@ BatchStackedModel = nn.vmap(
     split_rngs={"params": False, "dropout": True},
 )
 
+# 전반적으로, 이것은 (배치 크기, 시퀀스 길이, 은닉 차원)의 형태를 가진 시퀀스-투-시퀀스 맵을 정의합니다.
+# 이는 트랜스포머, RNN, CNN 등과 같은 관련 시퀀스 모델들이 노출하는 서명과 정확히 일치합니다.
 
-# Overall, this defines a sequence-to-sequence map of shape (batch size, sequence length, hidden dimension),
-# exactly the signature exposed by related sequence models such as Transformers, RNNs, and CNNs.
-
-# Full code for training is defined in
-# [training.py](https://github.com/srush/s4/blob/main/s4/train.py).
+# 훈련을 위한 전체 코드는
+# [training.py](https://github.com/srush/s4/blob/main/s4/train.py)에서 정의됩니다.
 
 # 메인모델을 만들었지만, *SSMs 에 두 가지 핵심 문제* 가 있습니다. 
 # 첫번째로, 랜덤으로 초기화된 SSM 은 실제로 잘 작동하지 않습니다. 더군다나, 지금까지 한 것처럼 순진하게 계산하면 매우 느리고, 메모리 비효율적이 됩니다.
@@ -707,17 +697,15 @@ if False:
 
 # S4가 기본 SSM과 두 가지 주요한 차이점을 가지고 있다는 것을 기억하세요. 첫 번째는 이전 부분에서 정의된 $\boldsymbol{A}$ 행렬에 대한 특별한 공식을 사용함으로써 *모델링에서의 문제* 즉, 장거리 의존성 - 을 해결합니다. 이러한 특별한 SSM은 [선행](https://arxiv.org/abs/2110.13985) 연구들에서 S4 에 고려되었습니다.
     
-# The second main feature of S4 solves the *computational challenge* of SSMs by introducing a special representation and algorithm to be able to work with this matrix!
+# S4 의 두 번째 주요 특징은 이 행렬을 다룰 수 있게 특별한 표현과 알고리즘을 도입함으로써 SSM 의 *계산적 도전*을 해결합니다!
 
+# > 이산 시간 SSM 을 계산하는 근본적인 병목 현상은
+# > $\boldsymbol{\overline{A}}$ 에 의한 반복된 행렬 곱셈을 포함한다는 것입니다. 예를 들어,
+# > 순진하게 계산하면 $L$ 번 연속적인 곱셈이
+# > $\boldsymbol{\overline{A}}$ 에 의해 이루어지며, 이는 $O(N^2 L)$ 의 연산과
+# > $O(NL)$ 의 공간이 필요합니다.
 
-# > The fundamental bottleneck in computing the discrete-time SSM
-# > is that it involves repeated matrix multiplication by
-# > $\boldsymbol{\overline{A}}$.  For example, computing
-# > naively  involves $L$ successive multiplications
-# > by $\boldsymbol{\overline{A}}$, requiring $O(N^2 L)$ operations and
-# > $O(NL)$ space.
-
-# Specifically, recall this function here:
+# 구체적으로, 여기 이 함수를 다시 살펴보세요:
 
 # ```python
 # def K_conv(Ab, Bb, Cb, L):
@@ -726,15 +714,13 @@ if False:
 #    )
 # ```
 
-# The contribution of S4 is a stable method for speeding up this particular operation.
-# To do this we are going to focus on the case where the SSM
-# has special structure: specifically, Diagonal Plus Low-Rank (DPLR) in complex
-# space.
+# S4 의 기여는 이 특정 연산을 가속화하기 위한 안정적인 방법입니다.
+# 이를 위해 SSM 이 특별한 구조를 가진 경우에 집중할 것입니다: 구체적으로, 복소 공간에서의 대각선 플러스 저랭크(Diagonal Plus Low-Rank, DPLR).
 
-# A **DPLR** SSM is $(\boldsymbol{\Lambda} - \boldsymbol{P}\boldsymbol{Q}^*, \boldsymbol{B}, \boldsymbol{C})$ for some diagonal $\boldsymbol{\Lambda}$ and matrices $\boldsymbol{P}, \boldsymbol{Q}, \boldsymbol{B}, \boldsymbol{C} \in \mathbb{C}^{N \times 1}$.
-# We assume without loss of generality that the rank is $1$, i.e. these matrices are vectors.
+# **DPLR** SSM 은 어떤 대각선 $\boldsymbol{\Lambda}$ 와 행렬 $\boldsymbol{P}, \boldsymbol{Q}, \boldsymbol{B}, \boldsymbol{C} \in \mathbb{C}^{N \times 1}$ 에 대해 $(\boldsymbol{\Lambda} - \boldsymbol{P}\boldsymbol{Q}^*, \boldsymbol{B}, \boldsymbol{C})$ 입니다.
+# 우리는 일반성을 잃지 않고 랭크가 $1$ 이라고 가정합니다, 즉 이 행렬들은 벡터입니다.
 #
-# Under this DPLR assumption, S4 overcomes the speed bottleneck in three steps
+# 이 DPLR 가정 하에, S4 는 세 단계에서 속도 병목을 극복합니다.
 
 #
 # >  1. Instead of computing $\boldsymbol{\overline{K}}$ directly,
