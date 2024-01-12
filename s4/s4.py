@@ -764,12 +764,12 @@ def K_gen_simple(Ab, Bb, Cb, L):
 # > 생성함수는 본질적으로 SSM 컨볼루션 필터를 시간 도메인에서
 # > 주파수 도메인으로 변환합니다. 이 변환은 제어 공학 문헌에서 
 # > [z-변환](https://en.wikipedia.org/wiki/Z-transform) (부호 차이를 제외하고)이라고도 불립니다. 중요한 것은, 
-# > 이것이 같은 정보를 보존하며, 원하는 SSM 컨볼루션 필터를 복구할 수 있다는 점입니다. 이산 시퀀스의 z-변환을 알게 되면, 우리는 그것의
+# > 이것이 같은 정보를 보존하며, 원하는 SSM 컨볼루션 필터를 복구할 수 있다는 점입니다. 이산 시퀀스의 z-변환을 알면, 
 # > [z-transformation at the roots of unity](https://en.wikipedia.org/wiki/Z-transform#Inverse_Z-transform) 
 # > $\Omega = \{ \exp(2\pi \frac{k}{L} : k \in [L] \}$ 을 
 # > 계산하여 해당필터의 이산 푸리에변환을 얻을 수 있습니다.
 # > 그런 다음, [FFT](https://en.wikipedia.org/wiki/Fast_Fourier_transform) 를 적용하여
-# > 역 푸리에 변환을 $O(L \log L)$ 연산으로 안정적으로 적용하여 필터를 복구할 수 있습니다.
+# > 역푸리에 변환을 $O(L \log L)$ 연산으로 안정적으로 적용하여 필터를 복구할 수 있습니다.
 
 
 def conv_from_gen(gen, L):
@@ -787,8 +787,8 @@ def conv_from_gen(gen, L):
 # \hat{\mathcal{K}}_L(z) = \sum_{i=0}^{L-1} \boldsymbol{\overline{C}} \boldsymbol{\overline{A}}^i \boldsymbol{\overline{B}} z^i = \boldsymbol{\overline{C}} (\boldsymbol{I} - \boldsymbol{\overline{A}}^L z^L) (\boldsymbol{I} - \boldsymbol{\overline{A}} z)^{-1} \boldsymbol{\overline{B}} = \boldsymbol{\widetilde{C}}  (\boldsymbol{I} - \boldsymbol{\overline{A}} z)^{-1} \boldsymbol{\overline{B}}
 # $$
 
-# 그리고 모든 $z \in \Omega_L$ 에 대해, 우리는 $z^L = 1$ 이므로 그 항은 제거됩니다. 그런 다음 이 상수
-# 항을 새로운 $\boldsymbol{\widetilde{C}}$ 로 끌어들입니다. 중요한 것은, 이 함수는 `K_conv`를 **호출하지 않는다** 는 것입니다.
+# 그리고 모든 $z \in \Omega_L$ 에 대해 $z^L = 1$ 이므로 그 항은 제거됩니다. 그런 다음 이 상수
+# 항을 새로운 $\boldsymbol{\widetilde{C}}$ 로 반영합니다. 중요한 것은, 이 함수는 `K_conv` 를 **호출하지 않는다** 는 것입니다.
 
 
 def K_gen_inverse(Ab, Bb, Cb, L):
@@ -809,17 +809,16 @@ def test_gen_inverse(L=16, N=4):
     a = conv_from_gen(K_gen_inverse(*ssm, L=L), L)
     assert np.allclose(a, b)
 
-# 요약하자면, 1단계에서는 절단된 생성함수를 활용하여 행렬의 거듭제곱을
+# 요약하면, 1단계에서는 truncated 생성함수를 활용하여 행렬의 거듭제곱을
 # 역행렬로 대체할 수 있습니다.
-# 그러나 이 역행렬은 여전히 $L$ 번 계산되어야 합니다
-# (단위근 각각에 대해).
+# 그러나 이 역행렬은 여전히 (단위근 각각에 대해) $L$ 번 계산되어야 합니다.
 
 # ### Step 2: Diagonal Case
 
-# The next step to assume special *structure* on the matrix
-# $\boldsymbol{A}$ to compute the inverse faster than the naive inversion.
-# To begin, let us first convert the equation above to use the original SSM
-# matrices. With some algebra you can expand the discretization and show:
+# 다음 단계는 행렬 $\boldsymbol{A}$ 에 특별한 *구조* 를 가정하여
+# 역행렬을 단순하게 계산보다 더 빠르게 역행렬을 계산하는 것입니다.
+# 먼저 위의 방정식을 원래 SSM
+# 행렬들을 사용하도록 변환해봅시다. 약간의 대수학을 통해 이산화를 확장하고 보여줄 수 있습니다:
 
 # $$
 # \begin{aligned}
@@ -829,9 +828,8 @@ def test_gen_inverse(L=16, N=4):
 # \end{aligned}
 # $$
 
-
-# Now imagine $\boldsymbol{A}=\boldsymbol{\Lambda}$ for a diagonal $\boldsymbol{\Lambda}$. Substituting in the discretization
-# formula the authors show that the generating function can be written in the following manner:
+# 이제 $\boldsymbol{A}=\boldsymbol{\Lambda}$ 가 대각선 $\boldsymbol{\Lambda}$ 인 경우를 상상해보세요. 이산화
+# 공식에 대입하여 저자들은 생성함수가 다음과 같이 작성될 수 있음을 보여줍니다:
 
 # $$ \begin{aligned}
 # \boldsymbol{\hat{K}}_{\boldsymbol{\Lambda}}(z) & = c(z) \sum_i \cdot \frac{\boldsymbol{\widetilde{C}}_i \boldsymbol{B}_i} {(g(z) - \boldsymbol{\Lambda}_i)} = c(z) \cdot k_{z, \boldsymbol{\Lambda}}(\boldsymbol{\widetilde{C}}, \boldsymbol{B}) \\
@@ -839,19 +837,17 @@ def test_gen_inverse(L=16, N=4):
 # where $c$ is a constant, and $g$ is a function of $z$.
 
 
-# We have effectively replaced an inverse with a weighted dot product.
-# Let's make a small helper function to compute this weight dot product for use.
+# 효과적으로 역행렬을 weighted dot product 로 대체했습니다.
+# 이 weighted dot product 를 계산하기 위한 작은 도우미 함수를 만들어봅시다.
 
 
 def cauchy_dot(v, omega, lambd):
     return (v / (omega - lambd)).sum()
 
 
-# While not important for our implementation, it is worth noting that
-# this is a [Cauchy
-# kernel](https://en.wikipedia.org/wiki/Cauchy_matrix) and is the
-# subject of many other [fast
-# implementations](https://en.wikipedia.org/wiki/Fast_multipole_method).
+# 우리의 구현에는 중요하지 않지만, 이것이 [코시
+# 커널](https://en.wikipedia.org/wiki/Cauchy_matrix)이며 많은 다른 [가속화
+# 구현들](https://en.wikipedia.org/wiki/Fast_multipole_method)의 대상이라는 점을 언급할 가치가 있습니다.
 
 
 # ### Step 3: Diagonal Plus Low-Rank
