@@ -738,27 +738,14 @@ if False:
 
 # ### Step 1. SSM Generating Functions
 
-# 주요 단계는 시퀀스를 계산하는 것에서 그것의 생성 함수를 계산하는 것으로 전환하는 것입니다.
+# 주요 단계는 시퀀스를 계산하는 것에서 시퀀스를 생성하는 함수를 계산하는 것으로 전환하는 것입니다.
 # 논문의 appendix 에서:
 
-# > $\boldsymbol{\overline{A}}$ 의 거듭제곱을 계산하는 문제를 해결하기 위해, 또 다른 기술을 도입합니다.
+# > $\boldsymbol{\overline{A}}$ 의 거듭제곱을 계산하는 문제를 해결하기 위해, 기술을 추가로 도입합니다.
 # > SSM 컨볼루션 필터 $\boldsymbol{\overline{K}}$ 를 직접 계산하는 대신,
 # > 그 계수에 대한 생성함수를 도입하고 평가합니다.
 # >
-# > 노드 $z$ 에서 truncated $L$ 인 *truncated SSM 생성함수* 는
-# $$
-# \hat{\mathcal{K}}_L(z; \boldsymbol{\overline{A}}, \boldsymbol{\overline{B}}, \boldsymbol{\overline{C}}) \in \mathbb{C} := \sum_{i=0}^{L-1} \boldsymbol{\overline{C}} \boldsymbol{\overline{A}}^i \boldsymbol{\overline{B}} z^i
-# $$
-# 입니다.
-
-# 주요 단계는 시퀀스를 계산하는 것에서 그것의 생성 함수를 계산하는 것으로 전환하는 것입니다.
-# 논문의 부록에서:
-
-# > $\boldsymbol{\overline{A}}$ 의 거듭 제곱을 계산하는 문제를 해결하기 위해, 우리는 다른 기술을 도입합니다.
-# > SSM 컨볼루션 필터 $\boldsymbol{\overline{K}}$ 를 직접 계산하는 대신,
-# > 우리는 그 계수에 대한 생성 함수를 도입하고 그것의 평가를 계산합니다.
-# >
-# > 노드 $z$ 에서 절단 $L$ 로 *절단된 SSM 생성 함수*는
+# > 노드 $z$ 에서 truncation $L$ 인 *truncated SSM 생성함수* 는
 # $$
 # \hat{\mathcal{K}}_L(z; \boldsymbol{\overline{A}}, \boldsymbol{\overline{B}}, \boldsymbol{\overline{C}}) \in \mathbb{C} := \sum_{i=0}^{L-1} \boldsymbol{\overline{C}} \boldsymbol{\overline{A}}^i \boldsymbol{\overline{B}} z^i
 # $$
@@ -774,11 +761,15 @@ def K_gen_simple(Ab, Bb, Cb, L):
     return gen
 
 
-# > The generating function essentially converts the SSM convolution filter from the time domain to
-# > frequency domain. This transformation is also called [z-transform](https://en.wikipedia.org/wiki/Z-transform) (up to a minus sign) in control engineering literature. Importantly, it preserves the same information, and the desired SSM convolution filter
-# > can be recovered. Once the z-transform of a discrete sequence known, we can obtain the filter's discrete fourier transform from evaluations of its
-# > [z-transform at the roots of unity](https://en.wikipedia.org/wiki/Z-transform#Inverse_Z-transform)
-# $\Omega = \{ \exp(2\pi \frac{k}{L} : k \in [L] \}$. Then, we can apply inverse fourier transformation, stably in $O(L \log L)$ operations by applying an [FFT](https://en.wikipedia.org/wiki/Fast_Fourier_transform), to recover the filter.
+# > 생성함수는 본질적으로 SSM 컨볼루션 필터를 시간 도메인에서
+# > 주파수 도메인으로 변환합니다. 이 변환은 제어 공학 문헌에서 
+# > [z-변환](https://en.wikipedia.org/wiki/Z-transform) (부호 차이를 제외하고)이라고도 불립니다. 중요한 것은, 
+# > 이것이 같은 정보를 보존하며, 원하는 SSM 컨볼루션 필터를 복구할 수 있다는 점입니다. 이산 시퀀스의 z-변환을 알게 되면, 우리는 그것의
+# > [z-transformation at the roots of unity](https://en.wikipedia.org/wiki/Z-transform#Inverse_Z-transform) 
+# > $\Omega = \{ \exp(2\pi \frac{k}{L} : k \in [L] \}$ 을 
+# > 계산하여 해당필터의 이산 푸리에변환을 얻을 수 있습니다.
+# > 그런 다음, [FFT](https://en.wikipedia.org/wiki/Fast_Fourier_transform) 를 적용하여
+# > 역 푸리에 변환을 $O(L \log L)$ 연산으로 안정적으로 적용하여 필터를 복구할 수 있습니다.
 
 
 def conv_from_gen(gen, L):
@@ -791,13 +782,13 @@ def conv_from_gen(gen, L):
     return out.real
 
 
-# More importantly, in the generating function we can replace the matrix power with an inverse!
+# 더 중요한 것은, 생성함수에서는 행렬의 거듭제곱 대신 역행렬로 대체할 수 있다는 것입니다!
 # $$
 # \hat{\mathcal{K}}_L(z) = \sum_{i=0}^{L-1} \boldsymbol{\overline{C}} \boldsymbol{\overline{A}}^i \boldsymbol{\overline{B}} z^i = \boldsymbol{\overline{C}} (\boldsymbol{I} - \boldsymbol{\overline{A}}^L z^L) (\boldsymbol{I} - \boldsymbol{\overline{A}} z)^{-1} \boldsymbol{\overline{B}} = \boldsymbol{\widetilde{C}}  (\boldsymbol{I} - \boldsymbol{\overline{A}} z)^{-1} \boldsymbol{\overline{B}}
 # $$
 
-# And for all $z \in \Omega_L$, we have $z^L = 1$ so that term is removed. We then pull this constant
-# term into a new $\boldsymbol{\widetilde{C}}$. Critically, this function **does not** call `K_conv`,
+# 그리고 모든 $z \in \Omega_L$ 에 대해, 우리는 $z^L = 1$ 이므로 그 항은 제거됩니다. 그런 다음 이 상수
+# 항을 새로운 $\boldsymbol{\widetilde{C}}$ 로 끌어들입니다. 중요한 것은, 이 함수는 `K_conv`를 **호출하지 않는다** 는 것입니다.
 
 
 def K_gen_inverse(Ab, Bb, Cb, L):
@@ -807,7 +798,7 @@ def K_gen_inverse(Ab, Bb, Cb, L):
     return lambda z: (Ct.conj() @ inv(I - Ab * z) @ Bb).reshape()
 
 
-# But it does output the same values,
+# 그런데도 같은 값을 출력합니다,
 
 
 def test_gen_inverse(L=16, N=4):
@@ -818,11 +809,10 @@ def test_gen_inverse(L=16, N=4):
     a = conv_from_gen(K_gen_inverse(*ssm, L=L), L)
     assert np.allclose(a, b)
 
-
-#  In summary, Step 1 allows us to replace the matrix power with an
-#  inverse by utilizing a truncated generating function.
-#  However this inverse still needs to be calculated $L$
-#  times (for each of the roots of unity).
+# 요약하자면, 1단계에서는 절단된 생성함수를 활용하여 행렬의 거듭제곱을
+# 역행렬로 대체할 수 있습니다.
+# 그러나 이 역행렬은 여전히 $L$ 번 계산되어야 합니다
+# (단위근 각각에 대해).
 
 # ### Step 2: Diagonal Case
 
