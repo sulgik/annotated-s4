@@ -45,8 +45,7 @@
 # </audio>
 # </center>
 
-# ## Table of Contents
-
+# ## 목차
 
 # * [Part 1: State Space Models] (Modeling)
 #     - [Discrete-time SSM: The Recurrent Representation]
@@ -358,8 +357,8 @@ def K_conv(Ab, Bb, Cb, L):
 
 
 # 이 필터를 적용한 결과는 표준디렉트컨볼루션을 사용하거나, [Fast Fourier Transform (FFT)](https://en.wikipedia.org/wiki/Convolution_theorem) 을 사용한 컨볼루션 정리를 사용하여 계산할 수 있습니다.
-# 두 시퀀스의 circular 컨볼루션에 대한 이산 컨볼루션 정리를 이용하면 컨볼루션의 출력을 효율적으로 계산할 수 있습니다. 구체적으로는 입력 시퀀스의 FFT를 먼저 곱한 다음 역 FFT 를 적용합니다. 
-# 우리 사례와 같은 비원형 컨볼루션에 이 정리를 활용하기 위해서는, 입력시퀀스를 0으로 패딩한 다음 출력 시퀀스의 패딩을 제거해야 합니다. 
+# 두 시퀀스의 circular 컨볼루션에 대한 이산 컨볼루션 정리를 이용하면 컨볼루션의 출력을 효율적으로 계산할 수 있습니다. 구체적으로는 입력 시퀀스의 FFT 를 먼저 곱한 다음 inverse FFT 를 적용합니다. 
+# 우리 사례와 같은 비원형 컨볼루션에 이 정리를 활용하기 위해서는, 입력시퀀스를 0 으로 패딩한 다음 출력시퀀스에서 패딩을 제거해야 합니다. 
 # 길이가 길어질수록 이 FFT 방법은 직접컨볼루션보다 더 효율적입니다.
 
 def causal_convolution(u, K, nofft=False):
@@ -396,7 +395,7 @@ def test_cnn_is_rnn(N=4, L=16, step=1.0 / 16):
 # 이제 기본 SSM 신경망 레이어를 구축하기 위한 모든 장치를 갖추게 되었습니다.
 # 위에서 정의한 바와 같이, 이산 SSM 은 $\mathbb{R}^L$ 에서 $\mathbb{R}^L$ 로의 매핑을 정의합니다, 
 # 즉, 1-D 시퀀스 맵입니다. 우리는 $B$ 및 $C$ 매개변수, 그리고 스텝 크기 $\Delta$ 및 스칼라 $D$ 매개변수를 학습할 것이라고 가정합니다.
-# HiPPO 행렬은 전환 $A$ 에 사용됩니다. 우리는 로그 공간에서 스텝 크기를 학습합니다.
+# HiPPO 행렬은 전환 $A$ 로 사용됩니다. 우리는 로그공간에서 스텝크기를 학습합니다.
 
 
 def log_step_initializer(dt_min=0.001, dt_max=0.1):
@@ -413,7 +412,7 @@ def log_step_initializer(dt_min=0.001, dt_max=0.1):
 # Torch 사용자를 위한 참고: Flax 의 `setup` 은 매개변수가 업데이트될 때마다 호출됩니다.
 # 이는 [Torch 매개변수화](https://pytorch.org/tutorials/intermediate/parametrizations.html)와 유사합니다.
 #
-# 위에서 언급했듯이, 이 같은 레이어는 RNN 또는 CNN 으로 사용될 수 있습니다. `decode` 인수는 사용할 경로를 결정합니다. RNN 의 경우, 
+# 위에서 언급했듯이, 이 같은 레이어는 RNN 이나 CNN 으로 사용될 수 있습니다. `decode` 인수는 사용할 경로를 결정합니다. RNN 의 경우, 
 # 우리는 각 호출에서 이전 상태를 Flax 변수 컬렉션인 `cache` 에 캐시합니다.
 
 class SSMLayer(nn.Module):
@@ -584,11 +583,11 @@ BatchStackedModel = nn.vmap(
     split_rngs={"params": False, "dropout": True},
 )
 
-# 전반적으로, 이것은 (배치 크기, 시퀀스 길이, 은닉 차원)의 형태를 가진 시퀀스-투-시퀀스 맵을 정의합니다.
-# 이는 트랜스포머, RNN, CNN 등과 같은 관련 시퀀스 모델들이 노출하는 서명과 정확히 일치합니다.
+# 전반적으로, 이것은 (배치 크기, 시퀀스 길이, 은닉 차원)의 형태를 가진 sequence-to-sequence 맵을 정의합니다.
+# 이는 트랜스포머, RNN, CNN 등과 같은 관련 시퀀스 모델들이 보여주는 특징과 정확히 일치합니다.
 
 # 훈련을 위한 전체 코드는
-# [training.py](https://github.com/srush/s4/blob/main/s4/train.py)에서 정의됩니다.
+# [training.py](https://github.com/srush/s4/blob/main/s4/train.py) 에서 정의됩니다.
 
 # 메인모델을 만들었지만, *SSMs 에 두 가지 핵심 문제* 가 있습니다. 
 # 첫번째로, 랜덤으로 초기화된 SSM 은 실제로 잘 작동하지 않습니다. 더군다나, 지금까지 한 것처럼 순진하게 계산하면 매우 느리고, 메모리 비효율적이 됩니다.
@@ -598,7 +597,7 @@ BatchStackedModel = nn.vmap(
 
 # <img src="images/hippo.png" width="100%"/>
 #
-# > [이전 연구](https://arxiv.org/abs/2008.07669) 에서 기본 SSM 은 실제로 성능이 매우 나빴습니다. 직관적인 설명은,  시퀀스 길이에서 기하급수적으로 그래디언트 스케일링 문제(i.e., the
+# > [이전 연구](https://arxiv.org/abs/2008.07669)에서 기본 SSM 은 실제로 성능이 매우 나빴습니다. 직관적인 설명은,  시퀀스 길이에서 기하급수적으로 그래디언트 스케일링 문제(i.e., the
 # > vanishing/exploding gradients problem) 입니다. 이를 해결하기 위해 이전 연구에서 HiPPO theory of continuous-time memorization 이 개발되었습니다.
 # >
 # > HiPPO 는 특정 행렬 $\boldsymbol{A} \in \mathbb{R}^{N \times N}$ 의 클래스를 지정합니다. 
@@ -621,7 +620,9 @@ BatchStackedModel = nn.vmap(
 # > 이전 연구에서는 단순히 무작위 행렬 $\boldsymbol{A}$ 에서 HiPPO 로 SSM 을 변경하는 것이 시퀀셜 MNIST 분류 벤치마크에서 성능을 $60\%$ 에서 $98\%$ 로 향상시켰습니다.
 
 
-# 이 행렬은 매우 중요할 것이지만, 마법처럼 보입니다. 우리의 목적을 위해서는 주로 1) 이 행렬을 한 번만 계산하면 된다는 것과 2) 이 행렬이 좋고, 단순한 구조를 가지고 있다는 것(우리는 이를 2부에서 활용할 것입니다)을 알아야 합니다. ODE 수학에 깊이 들어가지 않아도, 이 행렬의 주된 목표는 과거의 역사를 압축하여 역사를 대략적으로 재구성할 수 있는 충분한 정보를 가진 상태로 만드는 것입니다.
+# 핵심적인 이 행렬은 마법처럼 보입니다. 우리의 목적을 위해서는 주로 1) 이 행렬을 한 번만 계산하면 된다는 것과 
+# 2) 이 행렬이 좋고, 구조가 단순하다는 점(2부에서 활용할 예정)을 알아야 합니다. 
+# ODE 분야에 깊이 들어가지 않아도, 이 행렬의 주된 목표는 과거의 역사를 압축하여 대략적으로 재구성할 수 있는 충분한 정보를 가진 상태로 만드는 것입니다.
 
 def make_HiPPO(N):
     P = np.sqrt(1 + 2 * np.arange(N))
@@ -629,7 +630,10 @@ def make_HiPPO(N):
     A = np.tril(A) - np.diag(np.arange(N))
     return -A
 
-# 조금 더 깊이 들어가 보면, 이 행렬의 직관적인 설명은 그것이 그 역사를 기억하는 숨겨진 상태를 만들어낸다는 것입니다. 이는 [Legendre polynomial](https://en.wikipedia.org/wiki/Legendre_polynomials)의 계수를 추적함으로써 이루어집니다. 이 계수들은 그것이 이전의 모든 역사를 근사하게 할 수 있게 합니다. 예를 들어 살펴보겠습니다,
+# 조금 더 깊이 들어가서 직관적으로 이해하면 
+# 이 행렬은 과거를 기억하는 은닉상태를 만들어냅니다. 
+# 이는 [Legendre polynomial](https://en.wikipedia.org/wiki/Legendre_polynomials) 
+# 계수를 추적함으로써 이루어집니다. 이 계수들은 그것이 이전의 모든 역사를 근사하게 할 수 있게 합니다. 예를 들어 살펴보겠습니다,
 
 def example_legendre(N=8):
     # Random hidden state as coefficients
@@ -681,7 +685,8 @@ def example_legendre(N=8):
 if False:
     example_legendre()
 
-# 빨간 선은 우리가 근사하고 있는 그 곡선을 나타내며, 검은 막대는 우리의 숨겨진 상태의 값들을 나타냅니다. 각각은 파란색 함수로 나타낸 르장드르 급수의 한 요소에 대한 계수입니다. 직관적으로 이해하자면, HiPPO 행렬은 이러한 계수들을 각 단계마다 업데이트합니다.
+# 빨간 선은 우리가 근사하는 곡선을 나타내며, 검은 막대는 우리의 숨겨진 상태의 값들을 나타냅니다. 
+# 각 값은 파란색 함수로 나타낸 르장드르 급수의 한 요소에 대한 계수입니다. 직관적으로 이해하자면, HiPPO 행렬은 이러한 계수들을 각 단계마다 업데이트합니다.
 
 # <img src="images/leg.png" width="100%">
 
@@ -695,15 +700,17 @@ if False:
 
 # [Skip Button](#part-3-s4-in-practice)
 
-# S4가 기본 SSM과 두 가지 주요한 차이점을 가지고 있다는 것을 기억하세요. 첫 번째는 이전 부분에서 정의된 $\boldsymbol{A}$ 행렬에 대한 특별한 공식을 사용함으로써 *모델링에서의 문제* 즉, 장거리 의존성 - 을 해결합니다. 이러한 특별한 SSM은 [선행](https://arxiv.org/abs/2110.13985) 연구들에서 S4 에 고려되었습니다.
+# S4가 기본 SSM과 두 가지 주요한 차이점을 가지고 있다는 것을 기억하세요.
+# 첫 번째는 이전 부분에서 정의된 특별한 $\boldsymbol{A}$ 행렬 공식을 사용함으로써 
+# *모델링에서의 문제* - 즉, 장거리 의존성 - 을 해결합니다. 이러한 특별한 SSM 은 
+# [선행](https://arxiv.org/abs/2110.13985) 연구들에서 S4 에 고려되었습니다.
     
-# S4 의 두 번째 주요 특징은 이 행렬을 다룰 수 있게 특별한 표현과 알고리즘을 도입함으로써 SSM 의 *계산적 도전*을 해결합니다!
+# S4 의 두 번째 주요 특징은 이 행렬을 다룰 수 있는 특별한 표현과 알고리즘을 도입함으로써 SSM 의 *계산에서의 문제* 를 해결합니다!
 
 # > 이산 시간 SSM 을 계산하는 근본적인 병목 현상은
 # > $\boldsymbol{\overline{A}}$ 에 의한 반복된 행렬 곱셈을 포함한다는 것입니다. 예를 들어,
-# > 순진하게 계산하면 $L$ 번 연속적인 곱셈이
-# > $\boldsymbol{\overline{A}}$ 에 의해 이루어지며, 이는 $O(N^2 L)$ 의 연산과
-# > $O(NL)$ 의 공간이 필요합니다.
+# > 순진하게 계산하면 $\boldsymbol{\overline{A}}$ 를 $L$ 번 연속적으로 곱하게 되면
+# > $O(N^2 L)$ 연산과 $O(NL)$ 공간이 필요합니다.
 
 # 구체적으로, 여기 이 함수를 다시 살펴보세요:
 
@@ -714,34 +721,48 @@ if False:
 #    )
 # ```
 
-# S4 의 기여는 이 특정 연산을 가속화하기 위한 안정적인 방법입니다.
-# 이를 위해 SSM 이 특별한 구조를 가진 경우에 집중할 것입니다: 구체적으로, 복소 공간에서의 대각선 플러스 저랭크(Diagonal Plus Low-Rank, DPLR).
+# S4 의 기여는 이 특정 연산을 가속화는 안정적인 방법입니다.
+# 이를 위해 SSM 은 특별한 구조를 가진 경우에 집중할 것입니다: 구체적으로, 복소공간에서의 대각이면서 저랭크(Diagonal Plus Low-Rank, DPLR).
 
-# **DPLR** SSM 은 어떤 대각선 $\boldsymbol{\Lambda}$ 와 행렬 $\boldsymbol{P}, \boldsymbol{Q}, \boldsymbol{B}, \boldsymbol{C} \in \mathbb{C}^{N \times 1}$ 에 대해 $(\boldsymbol{\Lambda} - \boldsymbol{P}\boldsymbol{Q}^*, \boldsymbol{B}, \boldsymbol{C})$ 입니다.
+# **DPLR** SSM 은 $(\boldsymbol{\Lambda} - \boldsymbol{P}\boldsymbol{Q}^*, \boldsymbol{B}, \boldsymbol{C})$ 
 # 우리는 일반성을 잃지 않고 랭크가 $1$ 이라고 가정합니다, 즉 이 행렬들은 벡터입니다.
 #
 # 이 DPLR 가정 하에, S4 는 세 단계에서 속도 병목을 극복합니다.
 
 #
-# >  1. Instead of computing $\boldsymbol{\overline{K}}$ directly,
-#     we compute its spectrum by evaluating its **[truncated generating function](https://en.wikipedia.org/wiki/Generating_function)** .  This  now involves a matrix *inverse* instead of *power*.
-# >  2. We show that the diagonal matrix case is equivalent to the computation of a **[Cauchy kernel](https://en.wikipedia.org/wiki/Cauchy_matrix)** $\frac{1}{\omega_j - \zeta_k}$.
-# >  3. We show the low-rank term can now be corrected by applying the **[Woodbury identity](https://en.wikipedia.org/wiki/Woodbury_matrix_identity)** which reduces $(\boldsymbol{\Lambda} + \boldsymbol{P}\boldsymbol{Q}^*)^{-1}$ in terms of $\boldsymbol{\Lambda}^{-1}$, truly reducing to the diagonal case.
+# >  1. $\boldsymbol{\overline{K}}$ 를 직접 계산하는 대신,
+#     그 **[truncated generating function](https://en.wikipedia.org/wiki/Generating_function)** 을 평가함으로써 그 스펙트럼을 계산합니다. 이제 행렬의 *거듭제곱* 대신 *역행렬*을 해야합니다.
+# >  2. 대각 행렬 케이스가 **[Cauchy kernel](https://en.wikipedia.org/wiki/Cauchy_matrix)** $\frac{1}{\omega_j - \zeta_k}$ 의 계산과 동등하다는 것을 보여줍니다.
+# >  3. 저랭크 항이 이제 **[Woodbury identity](https://en.wikipedia.org/wiki/Woodbury_matrix_identity)** 을 적용함으로써 $\boldsymbol{\Lambda}^{-1}$ 의 관점에서 보정될 수 있음을 보여줍니다. 이는 $(\boldsymbol{\Lambda} + \boldsymbol{P}\boldsymbol{Q}^*)^{-1}$ 을 실제로 대각 케이스로 환원시킵니다.
 
 
 # ### Step 1. SSM Generating Functions
 
-# The main step will be switching from computing the sequence to computing its generating function.
-# From the paper's appendix:
+# 주요 단계는 시퀀스를 계산하는 것에서 그것의 생성 함수를 계산하는 것으로 전환하는 것입니다.
+# 논문의 appendix 에서:
 
-# > To address the problem of computing powers of $\boldsymbol{\overline{A}}$, we introduce another technique.
-# > Instead of computing the SSM convolution filter $\boldsymbol{\overline{K}}$ directly,
-# > we introduce a generating function on its coefficients and compute evaluations of it.
+# > $\boldsymbol{\overline{A}}$ 의 거듭제곱을 계산하는 문제를 해결하기 위해, 또 다른 기술을 도입합니다.
+# > SSM 컨볼루션 필터 $\boldsymbol{\overline{K}}$ 를 직접 계산하는 대신,
+# > 그 계수에 대한 생성함수를 도입하고 평가합니다.
 # >
-# >The *truncated SSM generating function* at node $z$ with truncation $L$ is
+# > 노드 $z$ 에서 truncated $L$ 인 *truncated SSM 생성함수* 는
 # $$
 # \hat{\mathcal{K}}_L(z; \boldsymbol{\overline{A}}, \boldsymbol{\overline{B}}, \boldsymbol{\overline{C}}) \in \mathbb{C} := \sum_{i=0}^{L-1} \boldsymbol{\overline{C}} \boldsymbol{\overline{A}}^i \boldsymbol{\overline{B}} z^i
 # $$
+# 입니다.
+
+# 주요 단계는 시퀀스를 계산하는 것에서 그것의 생성 함수를 계산하는 것으로 전환하는 것입니다.
+# 논문의 부록에서:
+
+# > $\boldsymbol{\overline{A}}$ 의 거듭 제곱을 계산하는 문제를 해결하기 위해, 우리는 다른 기술을 도입합니다.
+# > SSM 컨볼루션 필터 $\boldsymbol{\overline{K}}$ 를 직접 계산하는 대신,
+# > 우리는 그 계수에 대한 생성 함수를 도입하고 그것의 평가를 계산합니다.
+# >
+# > 노드 $z$ 에서 절단 $L$ 로 *절단된 SSM 생성 함수*는
+# $$
+# \hat{\mathcal{K}}_L(z; \boldsymbol{\overline{A}}, \boldsymbol{\overline{B}}, \boldsymbol{\overline{C}}) \in \mathbb{C} := \sum_{i=0}^{L-1} \boldsymbol{\overline{C}} \boldsymbol{\overline{A}}^i \boldsymbol{\overline{B}} z^i
+# $$
+# 입니다.
 
 
 def K_gen_simple(Ab, Bb, Cb, L):
@@ -1155,8 +1176,9 @@ def test_conversion(N=8, L=16):
 
 # ## Part 3: S4 in Practice
 
-# That was a lot of work, but now the actual model is concise. In fact
-# we are only using four functions:
+# 작업을 많이 했지만, 실제 모델은 간결합니다. 실제로
+# 우리는 단 네 개의 함수만 사용하고 있습니다:
+
 
 
 # 1. `K_gen_DPLR` → Truncated generating function when $\boldsymbol{A}$ is DPLR (S4-part)
@@ -1167,12 +1189,11 @@ def test_conversion(N=8, L=16):
 
 # ### S4 CNN / RNN Layer
 
-#  A full S4 Layer is very similar to the simple SSM layer above. The
-#  only difference is in the the computation of $\boldsymbol{K}$.
-#  Additionally instead of learning $\boldsymbol{C}$, we learn
-#  $\boldsymbol{\widetilde{C}}$ so we avoid computing powers of
-#  $\boldsymbol{A}$. Note as well that in the original paper $\boldsymbol{\Lambda}, \boldsymbol{P}, \boldsymbol{Q}$ are
-#  also learned. However, in this post, we leave them fixed for simplicity.
+# 완전한 S4 레이어는 위의 간단한 SSM 레이어와 매우 유사합니다. 
+# 유일한 차이점은 $\boldsymbol{K}$ 계산에 있습니다.
+# 또한 $\boldsymbol{C}$ 를 학습하는 대신, $\boldsymbol{A}$ 의 거듭 제곱을 계산하지 않도록 
+# $\boldsymbol{\widetilde{C}}$ 를 학습합니다. 원래 논문에서는 $\boldsymbol{\Lambda}, \boldsymbol{P}, \boldsymbol{Q}$ 도 
+# 학습됩니다. 하지만, 이 글에서는 간단함을 위해 그것들을 고정된 값으로 두고 있습니다.
 
 
 class S4Layer(nn.Module):
