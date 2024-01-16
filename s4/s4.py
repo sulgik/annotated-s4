@@ -633,7 +633,7 @@ def make_HiPPO(N):
 # 조금 더 깊이 들어가서 직관적으로 이해하면 
 # 이 행렬은 과거를 기억하는 은닉상태를 만들어냅니다. 
 # 이는 [Legendre polynomial](https://en.wikipedia.org/wiki/Legendre_polynomials) 
-# 계수를 추적함으로써 이루어집니다. 이 계수들은 그것이 이전의 모든 역사를 근사하게 할 수 있게 합니다. 예를 들어 살펴보겠습니다,
+# 계수를 추적함으로써 이루어집니다. 이 계수들은 은닉상태가 이전의 모든 역사를 근사할 수 있게 합니다. 예를 들어 살펴보겠습니다,
 
 def example_legendre(N=8):
     # Random hidden state as coefficients
@@ -685,7 +685,7 @@ def example_legendre(N=8):
 if False:
     example_legendre()
 
-# 빨간 선은 우리가 근사하는 곡선을 나타내며, 검은 막대는 우리의 숨겨진 상태의 값들을 나타냅니다. 
+# 빨간색 선은 우리가 근사하는 곡선을 나타내며, 검은색바는 우리의 숨겨진 상태의 값들을 나타냅니다. 
 # 각 값은 파란색 함수로 나타낸 르장드르 급수의 한 요소에 대한 계수입니다. 직관적으로 이해하자면, HiPPO 행렬은 이러한 계수들을 각 단계마다 업데이트합니다.
 
 # <img src="images/leg.png" width="100%">
@@ -845,41 +845,39 @@ def cauchy_dot(v, omega, lambd):
     return (v / (omega - lambd)).sum()
 
 
-# 우리의 구현에는 중요하지 않지만, 이것이 [코시
-# 커널](https://en.wikipedia.org/wiki/Cauchy_matrix)이며 많은 다른 [가속화
+# 우리 구현에서는 중요하지는 않지만, 이것이 [코시커널](https://en.wikipedia.org/wiki/Cauchy_matrix)이며 많은 다른 [가속화
 # 구현들](https://en.wikipedia.org/wiki/Fast_multipole_method)의 대상이라는 점을 언급할 가치가 있습니다.
 
 
 # ### Step 3: Diagonal Plus Low-Rank
 
-# The final step is to relax the diagonal assumption. In addition to
-# the diagonal term we allow a low-rank component with
-# $\boldsymbol{P}, \boldsymbol{Q} \in \mathbb{C}^{N\times 1}$ such that:
+# 마지막 단계는 대각선 가정을 완화하는 것입니다. 대각선 항 외에도
+# 저랭크 구성요소를 허용하며, 이는 $\boldsymbol{P}, \boldsymbol{Q} \in \mathbb{C}^{N\times 1}$ 와 같습니다:
 
 # $$
 # \boldsymbol{A} = \boldsymbol{\Lambda} - \boldsymbol{P}  \boldsymbol{Q}^*
 # $$
 
-# The [Woodbury identity](https://en.wikipedia.org/wiki/Woodbury_matrix_identity)
-# tells us that the inverse of a diagonal plus rank-1 term is equal to the
-# inverse of the diagonal plus a rank-1 term. We write it out here
-# adding the low-rank term.
+# [우드버리 항등식](https://en.wikipedia.org/wiki/Woodbury_matrix_identity) 에 따르면,
+# 대각선 항과 랭크-1 항을 더한 것의 역행렬은 대각선의 역행렬에 랭크-1 항을 더한 것과 같습니다.
+# 여기에서는 저랭크 항을 추가하면서 그것을 표현해봅시다.
 
 # $$ \begin{aligned}
 # (\boldsymbol{\Lambda} + \boldsymbol{P}  \boldsymbol{Q}^*)^{-1} &= \boldsymbol{\Lambda}^{-1} - \boldsymbol{\Lambda}^{-1} \boldsymbol{P} (1 + \boldsymbol{Q}^* \boldsymbol{\Lambda}^{-1} \boldsymbol{P})^{-1} \boldsymbol{Q}^* \boldsymbol{\Lambda}^{-1}
 #  \end{aligned}
 # $$
 
-#  There is a bunch of algebra in the appendix. It mostly consists of substituting this component in for A,
-#  applying the Woodbury identity and distributing terms. We end up with 4 terms that
-#  all look like Step 2 above:
+# appendix 에 대수학이 다수 포함되어 있습니다. 대부분은 이 구성요소를 A 대신 대입하고,
+# 우드버리 항등식을 적용하고 항들을 분배하는 것으로 이루어져 있습니다. 결국 4개의 항이 남게 되는데
+# 모두 위의 2단계와 비슷한 모습을 하고 있습니다:
+
 
 # $$ \begin{aligned}
 # \boldsymbol{\hat{K}}_{DPLR}(z) & = c(z) [k_{z, \Lambda}(\boldsymbol{\widetilde{C}}, \boldsymbol{\boldsymbol{B}}) - k_{z, \Lambda}(\boldsymbol{\widetilde{C}}, \boldsymbol{\boldsymbol{P}}) (1 + k_{z, \Lambda}(\boldsymbol{q^*}, \boldsymbol{\boldsymbol{P}}) )^{-1} k_{z, \Lambda}(\boldsymbol{q^*}, \boldsymbol{\boldsymbol{B}}) ]
 #  \end{aligned}$$
 
 
-# The code consists of collecting up the terms and applying 4 weighted dot products,
+# 코드는 항들을 모으고 4개의 weighted dot product 를 적용하는 것으로 구성됩니다,
 
 
 def K_gen_DPLR(Lambda, P, Q, B, C, step, unmat=False):
@@ -905,8 +903,9 @@ def K_gen_DPLR(Lambda, P, Q, B, C, step, unmat=False):
 
     return gen
 
-
-# This is our final version of the $K$ function. Because `conv_from_gen` is always called together with a generating function (e.g. `K_gen_DPLR`), we'll fuse them into define a dedicated function to compute the DPLR SSM kernel from all of its parameters. (With fewer layers of indirection, this could also make it easier for XLA compiler to optimize.)
+# 이것은 $K$ 함수의 최종버전입니다. `conv_from_gen`이 항상 생성함수(예: `K_gen_DPLR`)와 함께 호출되기 때문에, 
+# 모든 매개변수로부터 DPLR SSM 커널을 계산하기 위해 전용함수를 정의하여 통합하겠습니다. 
+# (간접 레이어가 적으면 XLA 컴파일러가 최적화하기 더 쉬워질 수도 있습니다.)
 
 
 @jax.jit
@@ -936,9 +935,8 @@ def kernel_DPLR(Lambda, P, Q, B, C, step, L):
     out = np.fft.ifft(atRoots, L).reshape(L)
     return out.real
 
-
-# Now we can check whether it worked.
-# First, let's generate a random Diagonal Plus Low Rank (DPLR) matrix,
+# 이제 이것이 작동하는지 확인해볼 수 있습니다.
+# 먼저, 임의의 DPLR 행렬을 생성해봅시다,
 
 
 def random_DPLR(rng, N):
@@ -951,7 +949,7 @@ def random_DPLR(rng, N):
     return Lambda, P, Q, B, C
 
 
-# We can check that the DPLR method yields the same filter as computing $\boldsymbol{A}$ directly,
+# DPLR 방법이 $\boldsymbol{A}$ 를 직접 계산하는 것과 동일한 필터를 생성하는지 확인할 수 있습니다,
 
 
 def test_gen_dplr(L=16, N=4):
@@ -973,12 +971,11 @@ def test_gen_dplr(L=16, N=4):
 
 # ### Diagonal Plus Low-Rank RNN.
 
-# A secondary benefit of the DPLR factorization is that it allows
-# us to compute the discretized form of the SSM without having
-# to invert the $A$ matrix directly. Here we return to the paper
-# for the derivation.
+# DPLR 인수분해의 부차적인 이점은 $A$ 행렬을 직접 역행렬로 계산할 필요 없이
+# SSM 이산화 형태를 계산할 수 있게 해준다는 것입니다. 여기서 다시 논문으로 돌아가서 유도해봅니다.
 
-# > Recall that discretization computes,
+
+# > 다음 계산으로 이산화했었습니다,
 # $$
 # \begin{align*}
 #   \bm{\overline{A}} &= (\bm{I} - \Delta/2 \cdot \bm{A})^{-1}(\bm{I} + \Delta/2 \cdot \bm{A}) \\
@@ -987,8 +984,8 @@ def test_gen_dplr(L=16, N=4):
 # \end{align*}
 # $$
 # >
-# > We simplify both terms in the definition of $\bm{\overline{A}}$ independently.
-# > The first term is:
+# > $\bm{\overline{A}}$ 의 정의의 두 항을 독립적으로 단순화합니다.
+# > 첫번째 항은:
 # $$
 # \begin{align*}
 #   \bm{I} + \frac{\Delta}{2} \bm{A}
@@ -997,11 +994,11 @@ def test_gen_dplr(L=16, N=4):
 #   \\&= \frac{\Delta}{2} \bm{A_0}
 # \end{align*}
 # $$
-# > where $\bm{A_0}$ is defined as the term in the final brackets.
+# > $\bm{A_0}$ 은 마지막 브래킷의 항으로 정의합니다.
 # >
-# > The second term is known as the Backward Euler's method.
-# > Although this inverse term is normally difficult to deal with,
-# > in the DPLR case we can simplify it using Woodbury's Identity as described above.
+# > 두 번째 항은 역오일러 방법으로 알려져 있습니다.
+# > 이 inverse term 은 일반적으로 다루기 어렵지만,
+# > DPLR 경우에는 위에서 설명한 바와 같이 우드버리 항등식을 사용하여 간단히 할 수 있습니다.
 # $$
 # \begin{align*}
 #   \left( \bm{I} - \frac{\Delta}{2} \bm{A} \right)^{-1}
